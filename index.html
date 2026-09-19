@@ -933,7 +933,7 @@ function initForm() {
 for (const id of [...Object.values(FIELDS), "f-time"]) $(id).addEventListener("input", renderAll);
 $("f-scen").addEventListener("input", renderScenario);
 
-$("now").textContent = `${T.date.slice(5).replace("-", "/")} (${WD[T.wd]}) ${T.time} 기준 · 버전 26`;
+$("now").textContent = `${T.date.slice(5).replace("-", "/")} (${WD[T.wd]}) ${T.time} 기준 · 버전 27`;
 $("phase").textContent = phaseOf(T.hhmm);
 
 for (const b of document.querySelectorAll("nav.tabs button")) {
@@ -970,26 +970,65 @@ function copyFile(f) {
     try { fr.readAsArrayBuffer(f); } catch (e) { done = true; clearTimeout(timer); no(e); }
   });
 }
-let pickPoll = null, taking = false;
-function stopPoll() { if (pickPoll) { clearInterval(pickPoll); pickPoll = null; } }
+// 폰 사진은 크다. 보내기 전에 줄여야 브라우저가 안 멈춘다.
+async function shrink(file) {
+  const MAX = 1400, Q = 0.8;
+  if (!/^image\//.test(file.type || "")) return file;
+  if ((file.size || 0) < 700 * 1024) return file;          // 이미 작으면 그대로
+  const url = URL.createObjectURL(file);
+  try {
+    let w, h, src;
+    if (window.createImageBitmap) {
+      const bm = await Promise.race([
+        createImageBitmap(file),
+        new Promise((_, no) => setTimeout(() => no(new Error("줄이기 시간초과")), 15000)),
+      ]);
+      w = bm.width; h = bm.height; src = bm;
+    } else {
+      const im = await new Promise((ok, no) => {
+        const x = new Image();
+        x.onload = () => ok(x);
+        x.onerror = () => no(new Error("이미지를 열지 못했어요"));
+        x.src = url;
+        setTimeout(() => no(new Error("줄이기 시간초과")), 15000);
+      });
+      w = im.naturalWidth; h = im.naturalHeight; src = im;
+    }
+    const k = Math.min(1, MAX / Math.max(w, h));
+    const cv = document.createElement("canvas");
+    cv.width = Math.max(1, Math.round(w * k));
+    cv.height = Math.max(1, Math.round(h * k));
+    cv.getContext("2d").drawImage(src, 0, 0, cv.width, cv.height);
+    if (src.close) try { src.close(); } catch (e) {}
+    const blob = await new Promise((ok) => cv.toBlob(ok, "image/jpeg", Q));
+    cv.width = cv.height = 0;
+    return blob && blob.size ? blob : file;
+  } finally { URL.revokeObjectURL(url); }
+}
+let taking = false;
 async function takeFrom(input, via) {
   if (taking) return;
   let files = [];
   try { files = Array.from(input.files || []); } catch (e) { dbg("files 읽기 오류 " + e.message); return; }
   dbg(via + ": 파일 " + files.length + "개");
   if (!files.length) return;
-  taking = true; stopPoll();
+  taking = true;
   try {
     const f = files[0];
-    dbg("파일 " + (f.name || "?") + " · " + (f.type || "형식 없음") + " · " + Math.round((f.size || 0) / 1024) + "KB");
-    setStatus("사진 받음 · Claude에게 보내는 중…");
-    // 참고용 시험: 이 화면에서 파일 내용을 읽을 수 있는지 (결과만 기록, 기다리지 않음)
-    Promise.race([f.arrayBuffer().then((a) => "읽기 가능 " + Math.round(a.byteLength / 1024) + "KB"),
-                  new Promise((ok) => setTimeout(() => ok("5초 동안 읽기 응답 없음"), 5000))])
-      .then((m) => dbg("시험: " + m)).catch((e) => dbg("시험: 읽기 오류 " + (e && e.message)));
-    shots.push(f); renderShots();
-    await readShots();
+    const kb = Math.round((f.size || 0) / 1024);
+    dbg("파일 " + (f.name || "?") + " · " + (f.type || "형식 없음") + " · " + kb + "KB");
+    setStatus("사진 줄이는 중…");
+    let small = f;
+    try {
+      small = await shrink(f);
+      dbg("줄임 " + kb + "KB -> " + Math.round(small.size / 1024) + "KB");
+    } catch (e) {
+      dbg("줄이기 실패(" + (e && e.message) + ") · 원본으로 보냄");
+    }
     try { input.value = ""; } catch (e) {}
+    setStatus("사진 읽는 중…");
+    shots.push(small); renderShots();
+    await readShots();
   } catch (e) {
     dbg("오류 " + ((e && (e.code || e.message)) || e));
     setStatus("사진을 받지 못했어요 [" + ((e && (e.code || e.message)) || "알 수 없음") + "]", true);
@@ -997,17 +1036,9 @@ async function takeFrom(input, via) {
 }
 for (const [id, name] of [["shotfile", "방법1"], ["shotfile2", "방법2"]]) {
   const el = $(id);
-  el.addEventListener("click", () => {
-    dbg(name + " 누름"); setStatus("사진첩 여는 중…");
-    stopPoll(); const t0 = Date.now();
-    pickPoll = setInterval(() => {
-      let n = 0; try { n = (el.files || []).length; } catch (e) {}
-      if (n) { dbg(name + " 확인: 파일 들어옴"); takeFrom(el, name + " 확인"); }
-      else if (Date.now() - t0 > 120000) { stopPoll(); dbg(name + " 2분 동안 파일 없음"); }
-    }, 500);
-  });
-  for (const ev of ["change", "input"]) el.addEventListener(ev, () => { dbg(name + " " + ev + " 신호"); takeFrom(el, name + " " + ev); });
-  el.addEventListener("cancel", () => { dbg(name + " 취소"); stopPoll(); });
+  el.addEventListener("click", () => { dbg(name + " 누름"); setStatus("사진첩 여는 중…"); });
+  el.addEventListener("change", () => { dbg(name + " change"); takeFrom(el, name); });
+  el.addEventListener("cancel", () => { dbg(name + " 취소"); setStatus(""); });
 }
 document.addEventListener("visibilitychange", () => dbg("화면 " + (document.hidden ? "가려짐" : "다시 보임")));
 window.addEventListener("pageshow", (e) => dbg("pageshow" + (e.persisted ? " (복원)" : "")));
@@ -1016,7 +1047,7 @@ window.addEventListener("focus", () => dbg("창 다시 선택됨"));
 
 window.addEventListener("error", (e) => { dbg("화면 오류 " + e.message); setStatus("화면 오류 [" + (e.message || "알 수 없음") + "]", true); });
 window.addEventListener("unhandledrejection", (e) => { const r = e.reason; dbg("처리 오류 " + ((r && (r.code || r.message)) || r)); });
-dbg("화면 열림 · 버전 26");
+dbg("화면 열림 · 버전 27");
 // 사진첩이 열린 사이 휴대폰이 화면을 새로 고쳤는지 확인
 try {
   const t0 = +sessionStorage.getItem(PICK_KEY);
@@ -1481,7 +1512,7 @@ async function takePasted(e) {
   if (!files.length) return;
   e.preventDefault();
   dbg("붙여넣기 사진 " + files.length + "장");
-  for (const f of files) shots.push(await copyFile(f));
+  for (const f of files) shots.push(await shrink(f).catch(() => f));
   renderShots();
   readShots();
 }
