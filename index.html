@@ -607,7 +607,7 @@ const tick = (v) => Math.round(v / 1000) * 1000;
 const priceAt = (pc, p) => tick(pc * (1 + p / 100));
 const ymdLabel = (d) => { d = String(d); return +d.slice(4, 6) + "/" + +d.slice(6, 8); };
 const WD = ["일", "월", "화", "수", "목", "금", "토"];
-const wdOf = (ymd) => { const d = String(ymd); return new Date(`${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}T00:00:00+09:00`).getUTCDay(); };
+const wdOf = (ymd) => { const d = String(ymd); return new Date(`${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}T00:00:00Z`).getUTCDay(); };
 const hhmmLabel = (t) => { const s = String(t).padStart(4, "0"); return s.slice(0, 2) + ":" + s.slice(2); };
 
 function quant(arr, p) {
@@ -933,7 +933,7 @@ function initForm() {
 for (const id of [...Object.values(FIELDS), "f-time"]) $(id).addEventListener("input", renderAll);
 $("f-scen").addEventListener("input", renderScenario);
 
-$("now").textContent = `${T.date.slice(5).replace("-", "/")} (${WD[T.wd]}) ${T.time} 기준 · 버전 25`;
+$("now").textContent = `${T.date.slice(5).replace("-", "/")} (${WD[T.wd]}) ${T.time} 기준 · 버전 26`;
 $("phase").textContent = phaseOf(T.hhmm);
 
 for (const b of document.querySelectorAll("nav.tabs button")) {
@@ -1016,7 +1016,7 @@ window.addEventListener("focus", () => dbg("창 다시 선택됨"));
 
 window.addEventListener("error", (e) => { dbg("화면 오류 " + e.message); setStatus("화면 오류 [" + (e.message || "알 수 없음") + "]", true); });
 window.addEventListener("unhandledrejection", (e) => { const r = e.reason; dbg("처리 오류 " + ((r && (r.code || r.message)) || r)); });
-dbg("화면 열림 · 버전 25");
+dbg("화면 열림 · 버전 26");
 // 사진첩이 열린 사이 휴대폰이 화면을 새로 고쳤는지 확인
 try {
   const t0 = +sessionStorage.getItem(PICK_KEY);
