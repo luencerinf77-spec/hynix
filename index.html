@@ -1,0 +1,1623 @@
+<!doctype html>
+<html lang="ko"><head>
+<meta charset="utf-8">
+<title>하이닉스 장전 예측판</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+html,body{margin:0;padding:0}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<style>
+:root {
+  --bg: #EEF0F3;
+  --surface: #FFFFFF;
+  --surface-2: #F6F7F9;
+  --ink: #14161B;
+  --muted: #646B77;
+  --line: #DADDE3;
+  --up: #D22F28;
+  --down: #1B5CB6;
+  --flat: #646B77;
+  --accent: #0E6B64;
+  --accent-ink: #FFFFFF;
+  --band80: rgba(20, 22, 27, 0.08);
+  --band50: rgba(20, 22, 27, 0.18);
+  --warn-bg: #FFF4DB;
+  --warn-ink: #7A5200;
+  --shadow: 0 1px 2px rgba(20, 22, 27, 0.06), 0 4px 16px rgba(20, 22, 27, 0.04);
+  --sans: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0D0F12;
+    --surface: #16191E;
+    --surface-2: #1D2127;
+    --ink: #E7E9ED;
+    --muted: #9AA1AC;
+    --line: #2A2F37;
+    --up: #FF6A5F;
+    --down: #63A2FF;
+    --flat: #9AA1AC;
+    --accent: #38BFAF;
+    --accent-ink: #062B27;
+    --band80: rgba(231, 233, 237, 0.08);
+    --band50: rgba(231, 233, 237, 0.2);
+    --warn-bg: #2E2410;
+    --warn-ink: #F2C46B;
+    --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0D0F12;
+  --surface: #16191E;
+  --surface-2: #1D2127;
+  --ink: #E7E9ED;
+  --muted: #9AA1AC;
+  --line: #2A2F37;
+  --up: #FF6A5F;
+  --down: #63A2FF;
+  --flat: #9AA1AC;
+  --accent: #38BFAF;
+  --accent-ink: #062B27;
+  --band80: rgba(231, 233, 237, 0.08);
+  --band50: rgba(231, 233, 237, 0.2);
+  --warn-bg: #2E2410;
+  --warn-ink: #F2C46B;
+  --shadow: none;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--bg); }
+body {
+  margin: 0; color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, textarea { font: inherit; color: inherit; }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--flat); }
+.muted { color: var(--muted); }
+
+.app { max-width: 520px; margin: 0 auto; padding: 0 14px calc(84px + env(safe-area-inset-bottom)); }
+
+/* header */
+.top { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 14px 2px 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.top h1 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -0.02em; }
+.top .sub { font-size: 12px; color: var(--muted); }
+.phase { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); white-space: nowrap; }
+
+section.view { display: grid; gap: 12px; }
+section.view[hidden] { display: none !important; }
+
+.card { background: var(--surface); border-radius: 14px; padding: 16px; box-shadow: var(--shadow); border: 1px solid var(--line); }
+.card h2 { margin: 0 0 2px; font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+.card .hint { margin: 0 0 12px; font-size: 12.5px; color: var(--muted); }
+
+/* inputs */
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.field { display: grid; gap: 4px; }
+.field.wide { grid-column: 1 / -1; }
+.field label { font-size: 12px; color: var(--muted); font-weight: 500; }
+.field input {
+  width: 100%; padding: 10px 11px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2);
+  font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 16px;
+}
+.field input:focus-visible, button:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.field .from { font-size: 11px; color: var(--muted); }
+
+/* signal chips */
+.sigs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 2px 0 14px; }
+.sig {
+  text-align: left; padding: 9px 10px; border-radius: 11px; border: 1px solid var(--line); background: var(--surface-2); cursor: pointer;
+  display: grid; gap: 1px;
+}
+.sig .k { font-size: 11.5px; color: var(--muted); font-weight: 500; }
+.sig .v { font-size: 17px; font-weight: 600; }
+.sig .s { font-size: 11px; color: var(--muted); }
+.sig[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--surface); }
+.sig:disabled { opacity: .5; cursor: default; }
+
+/* range rows */
+.ranges { display: grid; gap: 14px; }
+.rrow { display: grid; grid-template-columns: 44px 1fr; column-gap: 10px; row-gap: 5px; align-items: center; }
+.rrow .lbl { font-size: 13px; font-weight: 600; color: var(--muted); grid-row: 1 / span 2; align-self: start; padding-top: 2px; }
+.rrow .head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.rrow .pct { font-size: 20px; font-weight: 600; }
+.rrow .price { font-size: 13px; color: var(--muted); }
+.bar { position: relative; height: 18px; grid-column: 2; }
+.bar .axis { position: absolute; left: 0; right: 0; top: 8px; height: 2px; background: var(--line); border-radius: 2px; }
+.bar .zero { position: absolute; top: 0; bottom: 0; width: 1.5px; background: var(--muted); opacity: .55; }
+.bar .b80 { position: absolute; top: 3px; height: 12px; background: var(--band80); border-radius: 6px; }
+.bar .b50 { position: absolute; top: 3px; height: 12px; background: var(--band50); border-radius: 6px; }
+.bar .dot { position: absolute; top: 3px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--ink); border: 2px solid var(--surface); }
+.bar .dot.up { background: var(--up); } .bar .dot.down { background: var(--down); }
+.rrow .span { grid-column: 2; font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 2px 12px; }
+.scale { display: grid; grid-template-columns: 44px 1fr; column-gap: 10px; margin-top: 2px; }
+.scale .ticks { position: relative; height: 16px; font-size: 10.5px; color: var(--muted); }
+.scale .ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+
+.note { font-size: 12px; color: var(--muted); margin: 12px 0 0; line-height: 1.55; }
+.warn { background: var(--warn-bg); color: var(--warn-ink); font-size: 12.5px; padding: 9px 11px; border-radius: 10px; margin: 0 0 12px; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); margin: 0 0 12px; }
+.meta b { color: var(--ink); font-weight: 600; }
+
+.btn { border: 0; border-radius: 10px; padding: 11px 14px; font-weight: 600; cursor: pointer; background: var(--accent); color: var(--accent-ink); }
+.btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.btn:disabled { opacity: .5; cursor: default; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.toast { font-size: 12.5px; color: var(--accent); min-height: 1em; }
+
+/* chat */
+.chat { display: grid; gap: 10px; }
+.msgs { display: grid; gap: 10px; }
+.msg { max-width: 92%; padding: 10px 12px; border-radius: 14px; white-space: pre-wrap; word-break: break-word; font-size: 14.5px; }
+.msg.me { justify-self: end; background: var(--accent); color: var(--accent-ink); border-bottom-right-radius: 4px; }
+.msg.ai { justify-self: start; background: var(--surface); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+.msg.ai.err { color: var(--warn-ink); background: var(--warn-bg); border-color: transparent; }
+.msg img { max-width: 160px; border-radius: 8px; display: block; margin-bottom: 6px; }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.chip { flex: none; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 11px; font-size: 13px; cursor: pointer; }
+.composer { position: sticky; bottom: calc(70px + env(safe-area-inset-bottom)); background: var(--bg); padding: 8px 0 4px; display: grid; gap: 6px; }
+.composer .box { display: grid; grid-template-columns: auto 1fr auto; gap: 6px; align-items: end; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 6px; }
+.composer textarea { border: 0; background: transparent; resize: none; min-height: 40px; max-height: 120px; padding: 9px 4px; font-size: 15px; outline: none; }
+.iconbtn { width: 40px; height: 40px; border-radius: 10px; border: 0; background: var(--surface-2); cursor: pointer; display: grid; place-items: center; }
+.iconbtn svg { width: 20px; height: 20px; fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.attach { font-size: 12px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+
+/* log */
+.log { display: grid; gap: 10px; }
+.day { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 13px 14px; display: grid; gap: 8px; }
+.day .d { display: flex; justify-content: space-between; align-items: baseline; }
+.day .d b { font-size: 14px; }
+.grid4 { display: grid; grid-template-columns: 38px repeat(3, 1fr); gap: 4px 8px; font-size: 12.5px; align-items: baseline; }
+.grid4 .h { font-size: 11px; color: var(--muted); }
+.hit { font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 6px; background: var(--surface-2); }
+.hit.ok { color: var(--accent); } .hit.no { color: var(--warn-ink); background: var(--warn-bg); }
+.actual { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.actual input { width: 100%; padding: 7px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-2); font-family: var(--mono); font-size: 13px; }
+
+/* nav */
+nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
+nav.tabs .in { max-width: 520px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); }
+nav.tabs button { border: 0; background: transparent; padding: 10px 0 12px; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; display: grid; justify-items: center; gap: 3px; }
+nav.tabs button svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+nav.tabs button[aria-selected="true"] { color: var(--accent); }
+@media (prefers-reduced-motion: no-preference) { .bar .dot, .bar .b50, .bar .b80 { transition: left .25s ease, width .25s ease; } }
+
+/* start card */
+.start { display: grid; gap: 12px; }
+.shots { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+.shot { position: relative; flex: none; width: 72px; height: 110px; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); background: var(--surface-2); }
+.shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.shot button { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%; border: 0; background: rgba(0,0,0,.6); color: #fff; font-size: 13px; line-height: 22px; cursor: pointer; padding: 0; }
+.addshot { flex: none; width: 72px; height: 110px; border-radius: 10px; border: 1.5px dashed var(--line); background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; display: grid; place-items: center; gap: 2px; padding: 8px; text-align: center; }
+.addshot svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.btn.big { width: 100%; padding: 14px; font-size: 16px; border-radius: 12px; }
+.status { font-size: 13px; color: var(--muted); min-height: 1.3em; }
+.status.err { color: var(--warn-ink); }
+details.check { border-top: 1px solid var(--line); padding-top: 10px; }
+details.check summary { cursor: pointer; font-size: 13px; color: var(--muted); font-weight: 500; list-style: none; display: flex; justify-content: space-between; }
+details.check summary::-webkit-details-marker { display: none; }
+details.check summary::after { content: "펼치기"; font-size: 12px; }
+details.check[open] summary::after { content: "접기"; }
+details.check .fields { margin-top: 10px; }
+.subhead { grid-column: 1 / -1; font-size: 12px; font-weight: 600; color: var(--ink); margin-top: 4px; }
+
+/* compare table */
+.cmp { overflow-x: auto; margin-top: 14px; }
+.cmp table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.cmp th, .cmp td { padding: 6px 6px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.cmp th:first-child, .cmp td:first-child { text-align: left; color: var(--muted); font-weight: 500; }
+.cmp th { font-size: 11.5px; color: var(--muted); font-weight: 600; }
+.cmp th.base, .cmp td.base { background: var(--surface-2); }
+.cmp tfoot td { font-size: 11px; color: var(--muted); border-bottom: 0; }
+
+.commentary { white-space: pre-wrap; font-size: 14.5px; line-height: 1.65; }
+.scen-in { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; margin-bottom: 12px; }
+.steps { display: flex; gap: 6px; flex-wrap: wrap; margin: -4px 0 12px; }
+
+.addshot, .iconbtn { position: relative; overflow: hidden; }
+.filein { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 0; }
+
+.review { font-size: 12.5px; color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 9px 12px; line-height: 1.5; }
+.review b { color: var(--ink); font-weight: 600; }
+.review.due { background: var(--warn-bg); color: var(--warn-ink); border-color: transparent; }
+.review.due b { color: var(--warn-ink); }
+
+/* sigs stacked */
+.sigs { grid-template-columns: 1fr; gap: 6px; }
+.sig { grid-template-columns: 1fr auto; grid-template-rows: auto auto; align-items: center; column-gap: 10px; padding: 8px 12px; }
+.sig .k { grid-column: 1; grid-row: 1; font-size: 13px; color: var(--ink); }
+.sig .s { grid-column: 1; grid-row: 2; }
+.sig .v { grid-column: 2; grid-row: 1 / span 2; font-size: 18px; }
+
+.pastebox { border: 1.5px dashed var(--line); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; color: var(--muted); min-height: 42px; outline: none; }
+.pastebox:focus { border-color: var(--accent); }
+.pastebox img { max-width: 60px; }
+
+.pickrow { display: grid; gap: 10px; }
+.pickbtn { position: relative; overflow: hidden; text-align: center; display: block; }
+.native-file { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); font-size: 14px; }
+.dbg { font-family: var(--mono); font-size: 11px; line-height: 1.5; white-space: pre-wrap; max-height: 220px; overflow: auto; background: var(--surface-2); border-radius: 8px; padding: 8px; margin: 8px 0 0; color: var(--muted); }
+.shots:empty { display: none; }
+
+.fromclaude { display:flex; flex-direction:column; gap:2px; padding:10px 12px; border-radius:10px;
+  background:var(--surface-2); border:1px solid var(--line); font-size:13px; }
+.fromclaude b { color:var(--ink); }
+.fromclaude span { color:var(--muted); font-size:12px; }
+</style>
+</head><body>
+<script>/* =====================================================================
+   웹 버전용 연결층 (claude.ai 밖에서 실행)
+   - claude.use("sample") -> Google Gemini API (키는 이 휴대폰 localStorage에만 저장)
+   - claude.use("db")     -> 이 휴대폰 localStorage에 저장하는 간단한 문서 저장소
+   앱 본체 코드는 claude.ai 버전과 같은 방식으로 이 둘을 부른다.
+   ===================================================================== */
+(function () {
+  const KEY_STORE = "hynix-gemini-key";
+  const MODEL_STORE = "hynix-gemini-model";
+  const DB_STORE = "hynix-db-v1";
+  const DEFAULT_MODEL = "gemini-3.1-flash-lite";
+
+  const ls = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } },
+  };
+
+  /* ---------------- Gemini ---------------- */
+  function err(code, message, text) { const e = new Error(message || code); e.code = code; if (text) e.text = text; return e; }
+
+  function blobToBase64(blob) {
+    return new Promise((ok, no) => {
+      const fr = new FileReader();
+      fr.onload = () => ok(String(fr.result).split(",")[1] || "");
+      fr.onerror = () => no(fr.error || err("image_rejected", "사진을 읽지 못했어요"));
+      fr.readAsDataURL(blob);
+    });
+  }
+
+  async function callGemini(input, opts, wantJson) {
+    opts = opts || {};
+    const key = ls.get(KEY_STORE);
+    if (!key) throw err("not_granted", "Gemini API 키가 없어요. 설정에서 넣어주세요.");
+    if (opts.tools) throw err("tools_unavailable", "tools not supported");
+    const model = ls.get(MODEL_STORE) || DEFAULT_MODEL;
+
+    // 대화 형식 맞추기: user/assistant -> user/model, 같은 역할이 이어지면 합친다
+    const turns = typeof input === "string" ? [{ role: "user", content: input }] : input;
+    const contents = [];
+    for (const t of turns) {
+      const role = t.role === "assistant" ? "model" : "user";
+      const last = contents[contents.length - 1];
+      if (last && last.role === role) last.parts[0].text += "\n\n" + t.content;
+      else contents.push({ role, parts: [{ text: t.content }] });
+    }
+    const imgs = opts.images ? Array.from(opts.images) : [];
+    if (imgs.length) {
+      const lastUser = contents[contents.length - 1];
+      for (const im of imgs) {
+        const data = await blobToBase64(im);
+        lastUser.parts.unshift({ inline_data: { mime_type: im.type || "image/jpeg", data } });
+      }
+    }
+    const body = { contents };
+    if (wantJson) body.generationConfig = { responseMimeType: "application/json" };
+
+    let res;
+    try {
+      res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+        body: JSON.stringify(body),
+        signal: opts.signal,
+      });
+    } catch (e) {
+      if (e && e.name === "AbortError") throw err("cancelled", "멈췄어요");
+      throw err("upstream_error", "인터넷 연결을 확인해주세요");
+    }
+    let j = null;
+    try { j = await res.json(); } catch (e) {}
+    if (!res.ok) {
+      const msg = (j && j.error && j.error.message) || ("HTTP " + res.status);
+      if (res.status === 429) throw err("rate_limited", msg);
+      if (res.status === 400 && /API key/i.test(msg)) throw err("not_granted", "API 키가 맞지 않아요");
+      if (res.status === 403) throw err("not_granted", msg);
+      if (res.status === 404) throw err("invalid_request", "모델 이름을 확인해주세요: " + model);
+      throw err("upstream_error", msg);
+    }
+    const cand = j && j.candidates && j.candidates[0];
+    const text = cand && cand.content && cand.content.parts ? cand.content.parts.map((p) => p.text || "").join("") : "";
+    if (!text) throw err("refused", (cand && cand.finishReason) || "빈 응답");
+    if (opts.onText) { try { opts.onText({ text, delta: text }); } catch (e) {} }
+    return { text, truncated: cand.finishReason === "MAX_TOKENS" };
+  }
+
+  function sample(input, opts) { return callGemini(input, opts, false); }
+  sample.json = async function (input, opts) {
+    const r = await callGemini(input, opts, true);
+    try { return JSON.parse(r.text); }
+    catch (e) {
+      const m = r.text.match(/[\[{][\s\S]*[\]}]/);
+      if (m) { try { return JSON.parse(m[0]); } catch (e2) {} }
+      throw err("invalid_json", "JSON이 아니에요", r.text);
+    }
+  };
+  sample.limits = async function () {
+    return { images: { maxCount: 5, maxInputBytes: 15 * 1024 * 1024, mediaTypes: ["image/jpeg", "image/png", "image/webp"] } };
+  };
+
+  /* ---------------- 휴대폰 저장소 ---------------- */
+  let store = {};
+  try { store = JSON.parse(ls.get(DB_STORE) || "{}") || {}; } catch (e) { store = {}; }
+  const listeners = new Set();
+  const clone = (v) => (v == null ? v : JSON.parse(JSON.stringify(v)));
+  function persist() { ls.set(DB_STORE, JSON.stringify(store)); for (const fn of Array.from(listeners)) { try { fn(); } catch (e) {} } }
+  const snapDoc = (path) => { const id = path.split("/").pop(); const v = store[path]; return { id, exists: v !== undefined, data: () => clone(v) }; };
+
+  function docRef(path) {
+    return {
+      id: path.split("/").pop(),
+      get: async () => snapDoc(path),
+      set: async (data) => { store[path] = clone(data); persist(); },
+      update: async (data) => { store[path] = Object.assign({}, store[path] || {}, clone(data)); persist(); },
+      delete: async () => { delete store[path]; persist(); },
+      onSnapshot(next) { const fn = () => next(snapDoc(path)); listeners.add(fn); setTimeout(fn, 0); return () => listeners.delete(fn); },
+      collection: (sub) => collRef(path + "/" + sub),
+    };
+  }
+  function collRef(path, order, lim) {
+    const list = () => {
+      const pre = path + "/";
+      let docs = Object.keys(store).filter((k) => k.startsWith(pre) && !k.slice(pre.length).includes("/")).map(snapDoc);
+      if (order) {
+        const [f, dir] = order;
+        docs.sort((a, b) => { const x = a.data()[f], y = b.data()[f]; return (x > y ? 1 : x < y ? -1 : 0) * (dir === "desc" ? -1 : 1); });
+      }
+      if (lim) docs = docs.slice(0, lim);
+      return { docs, size: docs.length, empty: !docs.length };
+    };
+    return {
+      doc: (id) => docRef(path + "/" + (id || Date.now().toString(36) + Math.random().toString(36).slice(2, 8))),
+      add: async (data) => { const r = docRef(path + "/" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8)); await r.set(data); return r; },
+      orderBy: (f, dir) => collRef(path, [f, dir || "asc"], lim),
+      limit: (n) => collRef(path, order, n),
+      where: () => collRef(path, order, lim),
+      get: async () => list(),
+      onSnapshot(next) { const fn = () => next(list()); listeners.add(fn); setTimeout(fn, 0); return () => listeners.delete(fn); },
+    };
+  }
+  const db = { doc: docRef, collection: (p) => collRef(p) };
+
+  /* 기록 내보내기 / 가져오기 (PC에서 복기할 때 사용) */
+  window.hynixExport = () => JSON.stringify({ exportedAt: new Date().toISOString(), store }, null, 1);
+  window.hynixImport = (text) => { const j = JSON.parse(text); const s = j.store || j; store = Object.assign({}, store, s); persist(); };
+  window.hynixKey = { get: () => ls.get(KEY_STORE) || "", set: (k) => ls.set(KEY_STORE, (k || "").trim()),
+                      model: () => ls.get(MODEL_STORE) || DEFAULT_MODEL, setModel: (m) => ls.set(MODEL_STORE, (m || "").trim() || DEFAULT_MODEL) };
+
+  window.claude = { use: async (name) => (name === "sample" ? sample : name === "db" ? db : null) };
+})();
+</script>
+<div class="app">
+  <header class="top">
+    <div>
+      <h1>하이닉스 장전 예측판</h1>
+      <div class="sub" id="now">&nbsp;</div>
+    </div>
+    <span class="phase" id="phase">&nbsp;</span>
+  </header>
+
+  <!-- ============ 예측 ============ -->
+  <section class="view" id="v-pred">
+
+<div class="card" id="c-key">
+  <h2>Gemini 키</h2>
+  <p class="hint" style="margin:0 0 10px">사진을 읽으려면 키가 필요해요. 한 번만 넣으면 이 휴대폰에 저장됩니다.</p>
+  <div class="field"><label for="k-key">API 키</label>
+    <input id="k-key" type="password" autocomplete="off" placeholder="AIza..."></div>
+  <button class="btn big" id="k-save" type="button" style="margin-top:10px">저장</button>
+  <div class="status" id="k-status" role="status" aria-live="polite"></div>
+</div>
+
+    <div class="review" id="review">일주일에 한 번, PC에서 Claude에게 <b>“그동안 복기해줘”</b>라고 말해주세요.</div>
+    <div class="card">
+      <h2>숫자로 넣기</h2>
+      <p class="hint" style="margin:0 0 10px">지금 앱에 보이는 가격을 넣고 저장하세요. 저녁·아침은 시각을 보고 알아서 나눠요.</p>
+      <div class="fields">
+        <div class="field"><label for="q-adr">ADR 가격 ($)</label><input id="q-adr" inputmode="decimal" autocomplete="off" placeholder="예: 177.55"></div>
+        <div class="field"><label for="q-hx">하이닉스 현재가 (원, 장중만)</label><input id="q-hx" inputmode="numeric" autocomplete="off" placeholder="예: 1,768,000"></div>
+      </div>
+      <button class="btn big" id="q-save" type="button" style="margin-top:12px">저장</button>
+      <div class="status" id="q-status" role="status" aria-live="polite"></div>
+    </div>
+
+    <div class="card start">
+      <div>
+        <h2>사진 올리기</h2>
+        <p class="hint" style="margin:0">캡처할 때마다 올리세요. 날짜·시각을 보고 알아서 저장해요.<br><b style="color:var(--ink)">대신증권 앱은 "통합"으로 두고 캡처하세요.</b></p>
+      </div>
+      <div class="shots" id="shots"></div>
+      <div class="pickrow">
+        <label class="btn ghost pickbtn" id="addshot">사진 추가 (방법 1)<input type="file" id="shotfile" accept="image/*" class="filein"></label>
+        <div class="field"><label for="shotfile2">사진 추가 (방법 2) · 아래 칸을 누르세요</label><input type="file" id="shotfile2" accept="image/*" class="native-file"></div>
+      </div>
+      <button class="btn big" id="startbtn" type="button">오늘 예측 보기</button>
+      <div class="status" id="status" role="status" aria-live="polite"></div>
+      <details class="check" id="dbgwrap" open><summary>진행 기록 · 안 되면 이 부분을 캡처해서 보내주세요</summary><pre id="dbg" class="dbg"></pre></details>
+
+      <details class="check" id="check">
+        <summary>읽은 숫자 보기</summary>
+        <div class="fields">
+          <div class="subhead">하이닉스 어제</div>
+          <div class="field"><label for="f-pc">종가 (원)</label><input id="f-pc" inputmode="numeric" autocomplete="off"></div>
+          <div class="field"><label for="f-po">시가 (원)</label><input id="f-po" inputmode="numeric" autocomplete="off"></div>
+          <div class="field"><label for="f-ph">고가 (원)</label><input id="f-ph" inputmode="numeric" autocomplete="off"></div>
+          <div class="field"><label for="f-pl">저가 (원)</label><input id="f-pl" inputmode="numeric" autocomplete="off"></div>
+          <div class="field wide"><span class="from" id="pc-from"></span></div>
+          <div class="subhead">ADR 아침 7:30</div>
+          <div class="field"><label for="f-m-p">가격 ($)</label><input id="f-m-p" inputmode="decimal" autocomplete="off"></div>
+          <div class="field"><label for="f-m-c">전일대비 ($)</label><input id="f-m-c" inputmode="decimal" autocomplete="off"></div>
+          <div class="subhead">ADR 어젯밤 8시</div>
+          <div class="field"><label for="f-e-p">가격 ($)</label><input id="f-e-p" inputmode="decimal" autocomplete="off"></div>
+          <div class="field"><label for="f-e-c">전일대비 ($)</label><input id="f-e-c" inputmode="decimal" autocomplete="off"></div>
+          <div class="field wide"><span class="from" id="eve-from"></span></div>
+          <div class="subhead">장중</div>
+          <div class="field"><label for="f-time">시각</label><input id="f-time" inputmode="numeric" autocomplete="off" placeholder="08:10"></div>
+          <div class="field"><label for="f-price">현재가 (원)</label><input id="f-price" inputmode="numeric" autocomplete="off"></div>
+          <div class="field"><label for="f-hi">오늘 고가 (원)</label><input id="f-hi" inputmode="numeric" autocomplete="off"></div>
+          <div class="field"><label for="f-lo">오늘 저가 (원)</label><input id="f-lo" inputmode="numeric" autocomplete="off"></div>
+        </div>
+      </details>
+    </div>
+
+    <div class="card" id="c-comment" hidden>
+      <h2>한눈에 정리</h2>
+      <div class="commentary" id="comment"></div>
+    </div>
+
+    <div class="card">
+      <h2>오늘 예상 <span class="num" id="m-date" style="font-weight:600;color:var(--accent)"></span></h2>
+      <div class="sigs" id="sigs"></div>
+      <div id="m-warn"></div>
+      <div class="meta" id="m-meta"></div>
+      <div class="ranges" id="m-ranges"></div>
+      <div class="scale"><span></span><div class="ticks" id="m-ticks"></div></div>
+      <p class="note">점 = 예상 · 띠 = 10번 중 8번 들어온 범위 · 세로선 = 어제 종가</p>
+      <details class="check" style="margin-top:10px"><summary>다른 ADR 기준으로 보기</summary><div class="cmp" id="cmp"></div></details>
+      <button class="btn ghost" id="snap-btn" type="button" style="width:100%;margin-top:12px">지난 예측 다시 보기</button>
+    </div>
+
+    <div class="card" id="c-snap" hidden>
+      <div class="row" style="justify-content:space-between">
+        <h2 style="margin:0">지난 예측 <span class="num" id="snap-date" style="color:var(--accent)"></span></h2>
+        <button class="chip" id="snap-close" type="button">닫기</button>
+      </div>
+      <div class="row" id="snap-days" style="margin-top:10px"></div>
+      <div class="row" id="snap-times" style="margin-top:8px"></div>
+      <div class="meta" id="snap-meta" style="margin-top:10px"></div>
+      <div class="commentary" id="snap-comment" style="margin-bottom:12px"></div>
+      <div class="ranges" id="snap-ranges"></div>
+      <div class="scale"><span></span><div class="ticks" id="snap-ticks"></div></div>
+    </div>
+
+    <div class="card" id="c-scen">
+      <h2>오늘 등락률이 ○%라면?</h2>
+      <div class="scen-in">
+        <div class="field"><label for="f-scen">종가 등락 (%) · 전일 종가 대비</label><input id="f-scen" inputmode="decimal" autocomplete="off" value="2"></div>
+      </div>
+      <div class="steps" id="scen-steps"></div>
+      <div class="meta" id="s-meta"></div>
+      <div class="ranges" id="s-ranges"></div>
+      <div class="scale"><span></span><div class="ticks" id="s-ticks"></div></div>
+    </div>
+
+    <div class="card">
+      <h2>지금 가격으로 다시 보기</h2>
+      <div id="i-out"></div>
+    </div>
+
+    <div class="card">
+      <h2>괴리율 계산기</h2>
+      <div class="fields">
+        <div class="field"><label for="g-adr">ADR 가격 ($)</label><input id="g-adr" inputmode="decimal" autocomplete="off"></div>
+        <div class="field"><label for="g-prem">괴리율 (%)</label><input id="g-prem" inputmode="decimal" autocomplete="off"></div>
+      </div>
+      <div class="meta" id="g-out" style="margin:12px 0 0"></div>
+      <details class="check" style="margin-top:10px"><summary id="g-fx-sum">환율</summary>
+        <div class="fields"><div class="field"><label for="g-fx">환율 (원/달러)</label><input id="g-fx" inputmode="decimal" autocomplete="off"></div></div>
+      </details>
+    </div>
+
+    <p class="note" id="model-basis" style="padding:0 4px 8px"></p>
+  </section>
+
+  <!-- ============ 대화 ============ -->
+  <section class="view" id="v-chat" hidden>
+    <div class="chat">
+      <div class="warn" id="chat-off" hidden>여기서는 대화를 쓸 수 없어요. Claude 앱에서 열어주세요.</div>
+      <div class="msgs" id="msgs"></div>
+      <div class="composer" id="composer">
+        <div class="chips" id="chips"></div>
+        <div class="attach" id="attach-row" hidden><span id="attach-name"></span><button class="chip" id="attach-clear" type="button">사진 빼기</button></div>
+        <div class="box">
+          <label class="iconbtn" id="photo-btn" title="사진 첨부" aria-label="사진 첨부">
+            <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="3"/><circle cx="12" cy="13" r="3.5"/><path d="M8.5 6l1.5-2h4l1.5 2"/></svg>
+            <input type="file" id="photo" accept="image/*" class="filein">
+          </label>
+          <textarea id="ask" rows="1" placeholder="무엇이든 물어보세요"></textarea>
+          <button class="iconbtn" id="send" title="보내기" aria-label="보내기" type="button">
+            <svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-3-7-7-1z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 시세표 ============ -->
+  <section class="view" id="v-table" hidden>
+    <div class="card">
+      <h2>일별 시세표</h2>
+      <p class="hint" id="tbl-hint"></p>
+      <div class="cmp tablewrap" id="tbl"></div>
+    </div>
+  </section>
+
+  <!-- ============ 기록 ============ -->
+  <section class="view" id="v-log" hidden>
+    <div class="card">
+      <h2>예측 기록</h2>
+      <p class="hint">사진을 올리면 자동 저장돼요. 밤 8시 뒤 하이닉스 사진이 있으면 실제 결과가 채워져요.</p>
+    </div>
+    <div class="warn" id="log-off" hidden>여기서는 기록을 볼 수 없어요. Claude 앱에서 열어주세요.</div>
+    <div class="log" id="log"></div>
+  </section>
+</div>
+
+<nav class="tabs" role="tablist">
+  <div class="in" style="grid-template-columns:repeat(4,1fr)">
+    <button role="tab" aria-selected="true" data-v="v-pred" type="button">
+      <svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 3 8-8"/><path d="M15 7h5v5"/></svg>예측
+    </button>
+    <button role="tab" aria-selected="false" data-v="v-chat" type="button">
+      <svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>대화
+    </button>
+    <button role="tab" aria-selected="false" data-v="v-table" type="button">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg>시세표
+    </button>
+    <button role="tab" aria-selected="false" data-v="v-log" type="button">
+      <svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h7M9 8h4"/></svg>기록
+    </button>
+  </div>
+</nav>
+
+<script>
+const M = {"intraday":{"n_days":193,"from":20251118,"to":20260916,"ck":{"810":{"close":[-0.645,-0.391,-0.026,0.441,0.808],"high_ext":[0.173,0.481,0.861],"low_ext":[-0.187,-0.458,-0.719],"close_adj":{"a":0.0653,"b":-0.025,"q":[-0.698,-0.39,-0.033,0.428,0.753]}},"830":{"close":[-0.617,-0.361,0.003,0.458,0.81],"high_ext":[0.166,0.481,0.777],"low_ext":[-0.181,-0.442,-0.718],"close_adj":{"a":0.0657,"b":-0.0231,"q":[-0.646,-0.384,-0.005,0.403,0.752]}},"900":{"close":[-0.588,-0.339,-0.01,0.476,0.824],"high_ext":[0.146,0.468,0.777],"low_ext":[-0.177,-0.421,-0.701],"close_adj":{"a":0.0753,"b":-0.018,"q":[-0.61,-0.381,-0.006,0.391,0.729]}},"930":{"close":[-0.612,-0.261,0.026,0.328,0.657],"high_ext":[0.0,0.295,0.544],"low_ext":[-0.022,-0.261,-0.519],"close_adj":{"a":0.0579,"b":-0.0107,"q":[-0.663,-0.297,-0.019,0.291,0.588]}},"1000":{"close":[-0.564,-0.297,0.033,0.285,0.644],"high_ext":[0.0,0.242,0.437],"low_ext":[0.0,-0.239,-0.482],"close_adj":{"a":0.0345,"b":-0.0131,"q":[-0.537,-0.27,0.013,0.241,0.597]}},"1100":{"close":[-0.463,-0.228,0.008,0.256,0.517],"high_ext":[0.0,0.103,0.406],"low_ext":[0.0,-0.14,-0.403],"close_adj":{"a":0.0231,"b":-0.0113,"q":[-0.454,-0.228,-0.009,0.215,0.491]}},"1200":{"close":[-0.45,-0.207,0.028,0.249,0.495],"high_ext":[0.0,0.044,0.367],"low_ext":[0.0,-0.11,-0.323],"close_adj":{"a":0.0401,"b":-0.016,"q":[-0.442,-0.211,0.007,0.196,0.45]}},"1300":{"close":[-0.368,-0.157,0.039,0.234,0.423],"high_ext":[0.0,0.017,0.343],"low_ext":[0.0,-0.078,-0.254],"close_adj":{"a":0.0435,"b":-0.0121,"q":[-0.391,-0.188,0.009,0.19,0.372]}},"1400":{"close":[-0.326,-0.174,0.037,0.19,0.385],"high_ext":[0.0,0.0,0.191],"low_ext":[0.0,-0.013,-0.244],"close_adj":{"a":0.0366,"b":-0.0113,"q":[-0.362,-0.166,0.017,0.17,0.378]}},"1530":{"close":[-0.212,-0.093,0.011,0.137,0.233],"high_ext":[0.0,0.0,0.049],"low_ext":[0.0,0.0,-0.106],"close_adj":{"a":0.0213,"b":-0.0054,"q":[-0.233,-0.124,-0.004,0.126,0.219]}},"1700":{"close":[-0.183,-0.087,0.022,0.099,0.169],"high_ext":[0.0,0.0,0.032],"low_ext":[0.0,0.0,-0.055],"close_adj":{"a":0.0105,"b":-0.0052,"q":[-0.161,-0.09,0.004,0.094,0.172]}},"1900":{"close":[-0.105,-0.036,0.008,0.047,0.093],"high_ext":[0.0,0.0,0.0],"low_ext":[0.0,0.0,0.0],"close_adj":{"a":0.0042,"b":-0.0025,"q":[-0.1,-0.043,0.005,0.041,0.088]}}}},"recent":[{"date":20260611,"o":1959000,"h":2163000,"l":1914000,"c":2138000},{"date":20260612,"o":2278000,"h":2346000,"l":2114000,"c":2162000},{"date":20260615,"o":2265000,"h":2322000,"l":2250000,"c":2320000},{"date":20260616,"o":2352000,"h":2430000,"l":2286000,"c":2418000},{"date":20260617,"o":2338000,"h":2539000,"l":2311000,"c":2502000},{"date":20260618,"o":2510000,"h":2738000,"l":2490000,"c":2699000},{"date":20260619,"o":2770000,"h":2891000,"l":2688000,"c":2755000},{"date":20260622,"o":2749000,"h":2959000,"l":2720000,"c":2959000},{"date":20260623,"o":2970000,"h":3002000,"l":2536000,"c":2569000},{"date":20260624,"o":2547000,"h":2703000,"l":2453000,"c":2653000},{"date":20260625,"o":2750000,"h":2987000,"l":2735000,"c":2939000},{"date":20260626,"o":2917000,"h":2955000,"l":2600000,"c":2700000},{"date":20260629,"o":2700000,"h":2743000,"l":2516000,"c":2622000},{"date":20260630,"o":2650000,"h":2742000,"l":2541000,"c":2640000},{"date":20260701,"o":2692000,"h":2723000,"l":2502000,"c":2551000},{"date":20260702,"o":2455000,"h":2481000,"l":2167000,"c":2229000},{"date":20260703,"o":2167000,"h":2454000,"l":2045000,"c":2424000},{"date":20260706,"o":2449000,"h":2509000,"l":2291000,"c":2347000},{"date":20260707,"o":2344000,"h":2346000,"l":2080000,"c":2167000},{"date":20260708,"o":2134000,"h":2329000,"l":1984000,"c":2025000},{"date":20260709,"o":2160000,"h":2270000,"l":2091000,"c":2253000},{"date":20260710,"o":2274000,"h":2337000,"l":2166000,"c":2201000},{"date":20260713,"o":2207000,"h":2215000,"l":1822000,"c":1828000},{"date":20260714,"o":1819000,"h":1942000,"l":1678000,"c":1941000},{"date":20260715,"o":2010000,"h":2171000,"l":2005000,"c":2022000},{"date":20260716,"o":1987000,"h":1987000,"l":1802000,"c":1830000},{"date":20260720,"o":1783000,"h":1892000,"l":1724000,"c":1841000},{"date":20260721,"o":1768000,"h":1889000,"l":1732000,"c":1872000},{"date":20260722,"o":1949000,"h":2006000,"l":1829000,"c":1830000},{"date":20260723,"o":1841000,"h":1948000,"l":1841000,"c":1947000},{"date":20260724,"o":1900000,"h":1909000,"l":1752000,"c":1781000},{"date":20260727,"o":1803000,"h":1848000,"l":1707000,"c":1819000},{"date":20260728,"o":1272000,"h":1759000,"l":1272000,"c":1525000},{"date":20260729,"o":1500000,"h":1619000,"l":1246000,"c":1410000},{"date":20260730,"o":1371000,"h":1459000,"l":1281000,"c":1359000},{"date":20260731,"o":1500000,"h":1718000,"l":1491000,"c":1718000},{"date":20260803,"o":1655000,"h":1692000,"l":1519000,"c":1521000},{"date":20260804,"o":1580000,"h":1630000,"l":1483000,"c":1609000},{"date":20260805,"o":1652000,"h":1701000,"l":1598000,"c":1616000},{"date":20260806,"o":1168000,"h":1614000,"l":1168000,"c":1496000},{"date":20260807,"o":1497000,"h":1542000,"l":1409000,"c":1466000},{"date":20260810,"o":1450000,"h":1487000,"l":1397000,"c":1418000},{"date":20260811,"o":1401000,"h":1455000,"l":1373000,"c":1433000},{"date":20260812,"o":1452000,"h":1549000,"l":1440000,"c":1521000},{"date":20260813,"o":1579000,"h":1634000,"l":1552000,"c":1572000},{"date":20260814,"o":1675000,"h":1700000,"l":1626000,"c":1667000},{"date":20260818,"o":1713000,"h":1792000,"l":1614000,"c":1621000},{"date":20260819,"o":1552000,"h":1655000,"l":1486000,"c":1624000},{"date":20260820,"o":1598000,"h":1721000,"l":1576000,"c":1710000},{"date":20260821,"o":1714000,"h":1774000,"l":1669000,"c":1761000},{"date":20260824,"o":1745000,"h":1792000,"l":1663000,"c":1664000},{"date":20260825,"o":1653000,"h":1716000,"l":1557000,"c":1715000},{"date":20260826,"o":1713000,"h":1735000,"l":1662000,"c":1680000},{"date":20260827,"o":1747000,"h":1790000,"l":1708000,"c":1743000},{"date":20260828,"o":1714000,"h":1725000,"l":1653000,"c":1658000},{"date":20260831,"o":1678000,"h":1678000,"l":1577000,"c":1653000},{"date":20260901,"o":1670000,"h":1713000,"l":1646000,"c":1652000},{"date":20260902,"o":1639000,"h":1661000,"l":1592000,"c":1597000},{"date":20260903,"o":1615000,"h":1649000,"l":1558000,"c":1580000},{"date":20260904,"o":1615000,"h":1683000,"l":1603000,"c":1662000},{"date":20260907,"o":1714000,"h":1790000,"l":1714000,"c":1787000},{"date":20260908,"o":1785000,"h":1889000,"l":1773000,"c":1814000},{"date":20260909,"o":1803000,"h":1883000,"l":1795000,"c":1832000},{"date":20260910,"o":1878000,"h":1909000,"l":1811000,"c":1850000},{"date":20260911,"o":1800000,"h":1832000,"l":1768000,"c":1832000},{"date":20260914,"o":1750000,"h":1770000,"l":1678000,"c":1683000},{"date":20260915,"o":1677000,"h":1729000,"l":1667000,"c":1712000},{"date":20260916,"o":1690000,"h":1763000,"l":1685000,"c":1757000},{"date":20260917,"o":1745000,"h":1785000,"l":1735000,"c":1766000},{"date":20260918,"o":1810000,"h":1857000,"l":1798000,"c":1849000}],"train":[{"date":20260722,"A":0.314,"B":6.733,"C":13.747,"O":4.113,"H":7.158,"L":-2.297,"Cl":-2.244},{"date":20260723,"A":2.372,"B":4.341,"C":-3.879,"O":0.601,"H":6.448,"L":0.601,"Cl":6.393},{"date":20260724,"A":-0.124,"B":-4.044,"C":2.559,"O":-2.414,"H":-1.952,"L":-10.015,"Cl":-8.526},{"date":20260727,"A":-0.11,"B":-6.39,"C":-8.808,"O":1.235,"H":3.762,"L":-4.155,"Cl":2.134},{"date":20260729,"A":3.844,"B":-0.673,"C":-8.985,"O":-1.639,"H":6.164,"L":-18.295,"Cl":-7.541},{"date":20260730,"A":-0.039,"B":-0.158,"C":-2.597,"O":-2.766,"H":3.475,"L":-9.149,"Cl":-3.617},{"date":20260803,"A":-0.793,"B":-10.009,"C":-3.537,"O":-3.667,"H":-1.513,"L":-11.583,"Cl":-11.467},{"date":20260804,"A":1.03,"B":3.03,"C":-0.703,"O":3.879,"H":7.166,"L":-2.498,"Cl":5.786},{"date":20260805,"A":-1.198,"B":3.91,"C":8.17,"O":2.672,"H":5.718,"L":-0.684,"Cl":0.435},{"date":20260807,"A":0.752,"B":2.372,"C":-4.966,"O":0.067,"H":3.075,"L":-5.816,"Cl":-2.005},{"date":20260810,"A":0.174,"B":-2.367,"C":-3.916,"O":-1.091,"H":1.432,"L":-4.707,"Cl":-3.274},{"date":20260811,"A":0.052,"B":-0.731,"C":-1.9,"O":-1.199,"H":2.609,"L":-3.173,"Cl":1.058},{"date":20260812,"A":-0.222,"B":3.063,"C":4.701,"O":1.326,"H":8.095,"L":0.488,"Cl":6.141},{"date":20260813,"A":-0.602,"B":4.572,"C":9.008,"O":3.813,"H":7.429,"L":2.038,"Cl":3.353},{"date":20260814,"A":1.346,"B":10.178,"C":7.292,"O":6.552,"H":8.142,"L":3.435,"Cl":6.043},{"date":20260818,"A":1.114,"B":3.155,"C":3.036,"O":2.759,"H":7.499,"L":-3.179,"Cl":-2.759},{"date":20260819,"A":-0.013,"B":-4.534,"C":-9.196,"O":-4.257,"H":2.097,"L":-8.328,"Cl":0.185},{"date":20260820,"A":1.748,"B":-1.897,"C":0.347,"O":-1.601,"H":5.973,"L":-2.956,"Cl":5.296},{"date":20260821,"A":-0.172,"B":-0.793,"C":4.431,"O":0.234,"H":3.743,"L":-2.398,"Cl":2.982},{"date":20260824,"A":0.22,"B":-2.051,"C":0.202,"O":-0.909,"H":1.76,"L":-5.565,"Cl":-5.508},{"date":20260825,"A":-0.206,"B":-1.929,"C":-4.92,"O":-0.661,"H":3.125,"L":-6.43,"Cl":3.065},{"date":20260826,"A":-0.054,"B":-0.689,"C":2.677,"O":-0.117,"H":1.166,"L":-3.09,"Cl":-2.041},{"date":20260827,"A":4.234,"B":3.813,"C":-0.947,"O":3.988,"H":6.548,"L":1.667,"Cl":3.75},{"date":20260828,"A":-0.52,"B":-2.297,"C":2.272,"O":-1.664,"H":-1.033,"L":-5.164,"Cl":-4.877},{"date":20260831,"A":-0.335,"B":1.262,"C":-0.353,"O":1.206,"H":1.206,"L":-4.885,"Cl":-0.302},{"date":20260901,"A":-0.182,"B":2.044,"C":2.198,"O":1.028,"H":3.63,"L":-0.423,"Cl":-0.06},{"date":20260902,"A":-0.933,"B":-1.501,"C":-2.309,"O":-0.787,"H":0.545,"L":-3.632,"Cl":-3.329},{"date":20260903,"A":-0.261,"B":4.04,"C":2.612,"O":1.127,"H":3.256,"L":-2.442,"Cl":-1.064},{"date":20260904,"A":-0.66,"B":1.784,"C":-0.788,"O":2.215,"H":6.519,"L":1.456,"Cl":5.19},{"date":20260907,"A":-1.096,"B":5.002,"C":8.138,"O":3.129,"H":7.702,"L":3.129,"Cl":7.521},{"date":20260908,"A":-1.096,"B":0.0,"C":8.138,"O":-0.112,"H":5.708,"L":-0.783,"Cl":1.511},{"date":20260909,"A":-0.205,"B":1.719,"C":4.831,"O":-0.606,"H":3.804,"L":-1.047,"Cl":0.992},{"date":20260910,"A":-0.896,"B":5.754,"C":7.049,"O":2.511,"H":4.203,"L":-1.146,"Cl":0.983},{"date":20260911,"A":-0.069,"B":-1.944,"C":-5.201,"O":-2.703,"H":-0.973,"L":-4.432,"Cl":-0.973},{"date":20260914,"A":0.168,"B":0.016,"C":0.94,"O":-4.476,"H":-3.384,"L":-8.406,"Cl":-8.133},{"date":20260915,"A":0.467,"B":-0.204,"C":-7.597,"O":-0.357,"H":2.733,"L":-0.951,"Cl":1.723},{"date":20260916,"A":-0.141,"B":-1.366,"C":-0.456,"O":-1.285,"H":2.979,"L":-1.577,"Cl":2.629},{"date":20260917,"A":1.533,"B":-1.312,"C":0.023,"O":-0.683,"H":1.594,"L":-1.252,"Cl":0.512},{"date":20260918,"A":0.169,"B":2.18,"C":4.643,"O":2.492,"H":5.153,"L":1.812,"Cl":4.7}],"cond":{"n":191,"high":[-0.093,0.025,0.181,0.381,0.643],"low":[-0.581,-0.339,-0.16,-0.011,0.274],"open_a":0.352,"open_b":0.278,"open_q":[-0.399,-0.244,-0.005,0.172,0.378]},"fx":{"value":1380.0,"date":20260918},"prem":40.6};
+
+/* ---------- helpers ---------- */
+const $ = (id) => document.getElementById(id);
+const num = (s) => { if (s == null) return null; const t = String(s).replace(/[,\s%$원+]/g, "").replace("−", "-"); if (t === "" || t === "-") return null; const v = Number(t); return Number.isFinite(v) ? v : null; };
+const sgn = (v) => v > 0.049 ? "up" : v < -0.049 ? "down" : "flat";
+const pct = (v, d = 1) => (v > 0.049 ? "+" : v < -0.049 ? "−" : "") + Math.abs(v).toFixed(d) + "%";
+const won = (v) => Math.round(v).toLocaleString("ko-KR");
+const tick = (v) => Math.round(v / 1000) * 1000;
+const priceAt = (pc, p) => tick(pc * (1 + p / 100));
+const ymdLabel = (d) => { d = String(d); return +d.slice(4, 6) + "/" + +d.slice(6, 8); };
+const WD = ["일", "월", "화", "수", "목", "금", "토"];
+const wdOf = (ymd) => { const d = String(ymd); return new Date(`${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}T00:00:00+09:00`).getUTCDay(); };
+const hhmmLabel = (t) => { const s = String(t).padStart(4, "0"); return s.slice(0, 2) + ":" + s.slice(2); };
+
+function quant(arr, p) {
+  const a = arr.slice().sort((x, y) => x - y);
+  if (!a.length) return 0;
+  const i = (a.length - 1) * p / 100, lo = Math.floor(i), hi = Math.ceil(i);
+  return a[lo] + (a[hi] - a[lo]) * (i - lo);
+}
+function kst() {
+  const s = new Date().toLocaleString("sv-SE", { timeZone: "Asia/Seoul" });
+  const [date, time] = s.split(" ");
+  const ymd = +date.replace(/-/g, "");
+  return { ymd, hhmm: +time.slice(0, 2) * 100 + +time.slice(3, 5), date, time: time.slice(0, 5), wd: wdOf(ymd) };
+}
+function prevWeekday(ymd) {
+  const d = String(ymd);
+  const t = new Date(`${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}T12:00:00+09:00`);
+  do { t.setUTCDate(t.getUTCDate() - 1); } while ([0, 6].includes(t.getUTCDay()));
+  return +t.toISOString().slice(0, 10).replace(/-/g, "");
+}
+function phaseOf(h) {
+  if (h < 730) return "장 시작 전";
+  if (h < 800) return "07:30 신호 확인";
+  if (h < 900) return "프리마켓";
+  if (h < 1530) return "정규장";
+  if (h < 2000) return "애프터마켓";
+  return "장 마감";
+}
+function parseTime(s) {
+  if (s == null) return null;
+  const m = String(s).trim().match(/^(\d{1,2})\s*[:시]?\s*(\d{2})/);
+  if (!m) return null;
+  const h = +m[1], mi = +m[2];
+  return h > 23 || mi > 59 ? null : h * 100 + mi;
+}
+
+/* ---------- saved data (db) ---------- */
+let saved = {};     // days/{ymd}
+let evenings = {};  // evening/{ymd}
+let db = null;
+
+function dayHistory() {
+  const map = {};
+  for (const r of M.recent) map[r.date] = { o: r.o, h: r.h, l: r.l, c: r.c };
+  for (const [k, d] of Object.entries(saved)) {
+    const a = d.actual;
+    if (a && a.c && a.h && a.l) map[+k] = { o: a.o || a.c, h: a.h, l: a.l, c: a.c };
+  }
+  return Object.keys(map).map(Number).sort((a, b) => a - b).map((k) => ({ date: k, ...map[k] }));
+}
+function prevRetFor(ymd, pc) {
+  const h = dayHistory().filter((r) => r.date < ymd);
+  if (h.length < 2 || !pc) return null;
+  return (pc / h[h.length - 2].c - 1) * 100;
+}
+function atrFor(ymd) {
+  const h = dayHistory().filter((r) => r.date < ymd);
+  if (h.length < 3) return null;
+  const rng = [];
+  for (let i = Math.max(1, h.length - 10); i < h.length; i++) rng.push((h[i].h - h[i].l) / h[i - 1].c * 100);
+  return rng.reduce((a, b) => a + b, 0) / rng.length;
+}
+
+/* ---------- models ---------- */
+const SIG_NAME = { A: "아침 7:30 앱에 보이는 %", B: "어젯밤 8시 → 아침 7:30", C: "미국장 마감 (새벽 5시)" };
+const KEYS = [["open", "시가", "O"], ["high", "고가", "H"], ["low", "저가", "L"], ["close", "종가", "Cl"]];
+let MORNING = null;
+
+function trainingRows() {
+  const rows = M.train.slice();
+  const have = new Set(rows.map((r) => r.date));
+  for (const d of Object.values(saved)) {
+    if (have.has(d.date) || !d.signals || !d.actual || !d.inputs || !d.inputs.pc) continue;
+    const a = d.actual, pc = d.inputs.pc;
+    if (!(a.c && a.h && a.l && a.o)) continue;
+    rows.push({ date: d.date, A: d.signals.A ?? null, B: d.signals.B ?? null, C: d.signals.C ?? null,
+      O: (a.o / pc - 1) * 100, H: (a.h / pc - 1) * 100, L: (a.l / pc - 1) * 100, Cl: (a.c / pc - 1) * 100 });
+  }
+  return rows;
+}
+function fitMorning() {
+  const rows = trainingRows();
+  const out = { n: rows.length, added: rows.length - M.train.length, signals: {} };
+  for (const s of ["A", "B", "C"]) {
+    out.signals[s] = {};
+    for (const [key, , y] of KEYS) {
+      const r = rows.filter((x) => x[s] != null && x[y] != null);
+      const n = r.length, mx = r.reduce((a, x) => a + x[s], 0) / n, my = r.reduce((a, x) => a + x[y], 0) / n;
+      let sxy = 0, sxx = 0, syy = 0;
+      for (const x of r) { sxy += (x[s] - mx) * (x[y] - my); sxx += (x[s] - mx) ** 2; syy += (x[y] - my) ** 2; }
+      const b = sxx ? sxy / sxx : 0, a = my - b * mx;
+      const res = r.map((x) => x[y] - (a + b * x[s]));
+      out.signals[s][key] = { a, b, r: sxx && syy ? sxy / Math.sqrt(sxx * syy) : 0, n,
+        q10: quant(res, 10), q25: quant(res, 25), q75: quant(res, 75), q90: quant(res, 90) };
+    }
+  }
+  return out;
+}
+function signalsFrom(inp) {
+  const s = {};
+  if (inp.mp != null && inp.mc != null) { const reg = inp.mp - inp.mc; if (reg > 0) s.A = inp.mc / reg * 100; }
+  if (inp.mp != null && inp.ep != null && inp.ep > 0) s.B = (inp.mp / inp.ep - 1) * 100;
+  if (inp.mp != null && inp.mc != null && inp.ep != null && inp.ec != null) {
+    const regToday = inp.mp - inp.mc, regPrev = inp.ep - inp.ec;
+    if (regPrev > 0 && Math.abs(regToday / regPrev - 1) > 1e-9) s.C = (regToday / regPrev - 1) * 100;
+    else if (regPrev > 0) s.C = 0;
+  }
+  return s;
+}
+function morning(sig, x) {
+  const out = {};
+  for (const [k] of KEYS) {
+    const m = MORNING.signals[sig][k], p = m.a + m.b * x;
+    out[k] = { p, lo80: p + m.q10, lo50: p + m.q25, hi50: p + m.q75, hi80: p + m.q90, r: m.r };
+  }
+  return out;
+}
+function scenario(x, atr) {
+  const c = M.cond, z = (q) => q * atr;
+  const H = c.high.map((q) => Math.max(x, 0) + z(q)).map((v) => Math.max(v, x));
+  const L = c.low.map((q) => Math.min(x, 0) + z(q)).map((v) => Math.min(v, x));
+  const O = c.open_q.map((q) => c.open_a + c.open_b * x + z(q));
+  const pack = (a) => ({ lo80: a[0], lo50: a[1], p: a[2], hi50: a[3], hi80: a[4] });
+  return { open: pack(O), high: pack(H), low: pack(L), close: { p: x, lo80: x, lo50: x, hi50: x, hi80: x } };
+}
+function intraday(hhmm, price, hi, lo, pc, atr) {
+  const cks = Object.keys(M.intraday.ck).map(Number).sort((a, b) => a - b).filter((c) => c <= hhmm);
+  if (!cks.length) return { error: "장중 계산은 08:10 이후부터 됩니다." };
+  const ck = cks[cks.length - 1], q = M.intraday.ck[String(ck)];
+  const H = Math.max(hi || price, price), L = Math.min(lo || price, price);
+  const P = (v) => (v / pc - 1) * 100;
+  // 전날 등락률 반영: 전날 많이 오를수록 남은 시간이 약한 경향 (192일 검증)
+  const pr = prevRetFor(T.ymd, pc);
+  const zs = q.close_adj && pr != null ? q.close_adj.q.map((e) => q.close_adj.a + q.close_adj.b * pr + e) : q.close;
+  const cl = zs.map((z) => P(price * (1 + z * atr / 100)));
+  const hx = q.high_ext.map((z) => P(H * (1 + z * atr / 100)));
+  const lx = q.low_ext.map((z) => P(L * (1 + z * atr / 100)));
+  return { ck, now: P(price),
+    close: { p: cl[2], lo80: cl[0], lo50: cl[1], hi50: cl[3], hi80: cl[4] },
+    high: { p: hx[0], lo80: P(H), lo50: P(H), hi50: hx[1], hi80: hx[2] },
+    low: { p: lx[0], lo80: lx[2], lo50: lx[1], hi50: P(L), hi80: P(L) } };
+}
+
+/* ---------- inputs ---------- */
+const T = kst();
+const FIELDS = { pc: "f-pc", po: "f-po", ph: "f-ph", pl: "f-pl", mp: "f-m-p", mc: "f-m-c", ep: "f-e-p", ec: "f-e-c", price: "f-price", hi: "f-hi", lo: "f-lo" };
+function readInputs() {
+  const o = {};
+  for (const [k, id] of Object.entries(FIELDS)) o[k] = num($(id).value);
+  o.time = parseTime($("f-time").value);
+  return o;
+}
+function setField(k, v) {
+  if (v == null || v === "") return;
+  const id = k === "time" ? "f-time" : FIELDS[k];
+  if (k === "time") { $(id).value = typeof v === "number" ? hhmmLabel(v) : v; return; }
+  $(id).value = ["pc", "po", "ph", "pl", "price", "hi", "lo"].includes(k) ? won(v) : v;
+}
+let sel = "B";
+const SRC = { pc: null, eve: null, morn: null };   // 계산에 쓴 값의 날짜·시각
+let exampleShown = false;
+
+/* ---------- render ---------- */
+function renderRanges(rows, boxId, ticksId, pc) {
+  let lo = 0, hi = 0;
+  for (const r of rows) { lo = Math.min(lo, r.v.lo80, r.v.p); hi = Math.max(hi, r.v.hi80, r.v.p); }
+  const span = Math.max(Math.abs(lo), Math.abs(hi)) + 0.8;
+  const step = span > 8 ? 4 : span > 4 ? 2 : 1;
+  const mx = Math.ceil(span / step) * step;
+  const X = (v) => ((v + mx) / (2 * mx) * 100).toFixed(2) + "%";
+  const W = (a, b) => (Math.max(0, b - a) / (2 * mx) * 100).toFixed(2) + "%";
+  $(boxId).innerHTML = rows.map(({ label, v, sub, fixed }) => {
+    const c = sgn(v.p);
+    const spanTxt = fixed ? "<span>정한 값</span>" : `<span>${pct(v.lo80)} ~ ${pct(v.hi80)}${pc ? ` (${won(priceAt(pc, v.lo80))} ~ ${won(priceAt(pc, v.hi80))})` : ""}</span>`;
+    return `<div class="rrow">
+      <div class="lbl">${label}</div>
+      <div class="head"><span class="pct num ${c}">${pct(v.p)}</span><span class="price num">${pc ? won(priceAt(pc, v.p)) + "원" : ""}</span></div>
+      <div class="bar" aria-hidden="true">
+        <div class="axis"></div>
+        <div class="b80" style="left:${X(v.lo80)};width:${W(v.lo80, v.hi80)}"></div>
+        <div class="b50" style="left:${X(v.lo50)};width:${W(v.lo50, v.hi50)}"></div>
+        <div class="zero" style="left:${X(0)}"></div>
+        <div class="dot ${c}" style="left:${X(v.p)}"></div>
+      </div>
+      <div class="span num">${spanTxt}${sub || ""}</div>
+    </div>`;
+  }).join("");
+  const ts = [];
+  for (let v = -mx; v <= mx + 1e-9; v += step) ts.push(`<span style="left:${X(v)}">${v === 0 ? "0" : (v > 0 ? "+" : "−") + Math.abs(v)}</span>`);
+  $(ticksId).innerHTML = ts.join("");
+}
+const strength = (r) => { const a = Math.abs(r); return a >= 0.7 ? "잘 맞음" : a >= 0.5 ? "보통" : a >= 0.3 ? "약함" : "거의 없음"; };
+
+function renderMorning() {
+  $("m-date").textContent = `${ymdLabel(T.ymd)} (${WD[T.wd]})`;
+  const inp = readInputs(), s = signalsFrom(inp), pc = inp.pc;
+  if (!(sel in s)) sel = s.B != null ? "B" : Object.keys(s)[0] || "B";
+  $("sigs").innerHTML = ["A", "B", "C"].map((k) => {
+    const has = s[k] != null;
+    return `<button class="sig" type="button" data-s="${k}" aria-pressed="${k === sel}" ${has ? "" : "disabled"}>
+      <span class="k">ADR ${SIG_NAME[k]}${k === "B" ? " (기준)" : ""}</span>
+      <span class="v num ${has ? sgn(s[k]) : ""}">${has ? pct(s[k], 1) : "–"}</span>
+      <span class="s">정확도 ${strength(MORNING.signals[k].close.r)}</span>
+    </button>`;
+  }).join("");
+  for (const b of $("sigs").querySelectorAll(".sig")) b.onclick = () => { sel = b.dataset.s; renderMorning(); };
+
+  let warn = "";
+  if (s.A != null && s.B != null && Math.sign(s.A) !== Math.sign(s.B) && Math.abs(s.A) > 0.3 && Math.abs(s.B) > 0.3)
+    warn += `<div class="warn">앱에 보이는 %와 어젯밤 8시 → 아침 7:30 방향이 달라요. 어젯밤 8시 → 아침 7:30 기준으로 보세요.</div>`;
+  if (s.B == null && Object.keys(s).length) warn += `<div class="warn">어젯밤 8시 ADR 사진이 없어서 덜 정확해요.</div>`;
+  if (sel === "A") warn += `<div class="warn">앱에 보이는 %는 잘 안 맞아요. 참고만 하세요.</div>`;
+  $("m-warn").innerHTML = warn;
+
+  if (s[sel] == null) { $("m-ranges").innerHTML = `<p class="muted" style="margin:0">ADR 사진을 올리고 시작을 누르세요.</p>`; $("m-ticks").innerHTML = ""; $("m-meta").innerHTML = ""; $("cmp").innerHTML = ""; return; }
+  const m = morning(sel, s[sel]);
+  $("m-meta").innerHTML = [
+    pc ? `<span>어제 종가 <b class="num">${won(pc)}원</b>${SRC.pc ? ` <span class="num">(${SRC.pc})</span>` : ""}</span>` : "",
+    s.B != null && (SRC.eve || SRC.morn) ? `<span>ADR <b class="num">${SRC.eve || "?"} → ${SRC.morn || "?"}</b></span>` : "",
+  ].join("");
+  renderRanges(KEYS.map(([k, l]) => ({ label: l, v: m[k] })), "m-ranges", "m-ticks", pc);
+
+  const avail = ["A", "B", "C"].filter((k) => s[k] != null);
+  const preds = Object.fromEntries(avail.map((k) => [k, morning(k, s[k])]));
+  $("cmp").innerHTML = `<table><thead><tr><th></th>${avail.map((k) => `<th class="${k === "B" ? "base" : ""}">${SIG_NAME[k]} ${pct(s[k], 1)}</th>`).join("")}</tr></thead>
+    <tbody>${KEYS.map(([k, l]) => `<tr><td>${l}</td>${avail.map((sg) => { const v = preds[sg][k].p; return `<td class="num ${sgn(v)} ${sg === "B" ? "base" : ""}">${pct(v)}${pc ? `<br><span class="muted" style="font-size:11px">${won(priceAt(pc, v))}</span>` : ""}</td>`; }).join("")}</tr>`).join("")}</tbody>
+    </table>`;
+}
+
+function renderScenario() {
+  const inp = readInputs(), x = num($("f-scen").value), atr = atrFor(T.ymd);
+  if (x == null || !atr) { $("s-ranges").innerHTML = `<p class="muted" style="margin:0">숫자를 넣으세요.</p>`; $("s-ticks").innerHTML = ""; $("s-meta").innerHTML = ""; return; }
+  const r = scenario(x, atr);
+  $("s-meta").innerHTML = "";
+  renderRanges([
+    { label: "종가", v: r.close, fixed: true },
+    { label: "시가", v: r.open },
+    { label: "고가", v: r.high },
+    { label: "저가", v: r.low },
+  ], "s-ranges", "s-ticks", inp.pc);
+}
+$("scen-steps").innerHTML = [-3, -2, -1, 1, 2, 3].map((v) => `<button class="chip" type="button" data-v="${v}">${v > 0 ? "+" : "−"}${Math.abs(v)}%</button>`).join("");
+for (const b of $("scen-steps").querySelectorAll(".chip")) b.onclick = () => { $("f-scen").value = b.dataset.v; renderScenario(); };
+
+function renderIntra() {
+  const inp = readInputs(), box = $("i-out"), atr = atrFor(T.ymd);
+  if (!inp.pc || !inp.price || inp.time == null) { box.innerHTML = `<p class="muted" style="margin:0">장중 하이닉스 사진을 올리면 나와요.</p>`; return; }
+  if (!atr) { box.innerHTML = `<p class="muted" style="margin:0">최근 종가가 부족해요.</p>`; return; }
+  const r = intraday(inp.time, inp.price, inp.hi, inp.lo, inp.pc, atr);
+  if (r.error) { box.innerHTML = `<p class="muted" style="margin:0">${r.error}</p>`; return; }
+  box.innerHTML = `<div class="meta"><span>${hhmmLabel(inp.time)} <b class="num ${sgn(r.now)}">${won(inp.price)}원 ${pct(r.now)}</b></span></div>
+    <div class="ranges" id="i-ranges"></div><div class="scale"><span></span><div class="ticks" id="i-ticks"></div></div>`;
+  renderRanges([
+    { label: "종가", v: r.close },
+    { label: "고가", v: r.high },
+    { label: "저가", v: r.low },
+  ], "i-ranges", "i-ticks", inp.pc);
+}
+
+function renderTable() {
+  const h = dayHistory();
+  const rows = [];
+  for (let i = h.length - 1; i >= 1 && rows.length < 65; i--) {
+    const d = h[i], pc = h[i - 1].c;
+    const chg = (d.c / pc - 1) * 100, diff = d.c - pc;
+    const posO = d.h > d.l ? (d.o - d.l) / (d.h - d.l) * 100 : null;
+    rows.push(`<tr><td>${ymdLabel(d.date)} (${WD[wdOf(d.date)]})</td>
+      <td class="num">${won(d.c)}</td>
+      <td class="num ${sgn(chg)}">${pct(chg)} (${diff > 0 ? "+" : diff < 0 ? "−" : ""}${won(Math.abs(diff))})</td>
+      <td class="num">${((d.h - d.l) / pc * 100).toFixed(1)}%</td>
+      <td class="num">${won(d.l)} (${pct((d.l / pc - 1) * 100)})</td>
+      <td class="num">${won(d.h)} (${pct((d.h / pc - 1) * 100)})</td>
+      <td class="num">${won(d.o)} (${posO == null ? "-" : posO.toFixed(1) + "%"})</td></tr>`);
+  }
+  $("tbl").innerHTML = `<table><thead><tr><th>날짜</th><th>종가</th><th>전날대비율 (차액)</th><th>고저차이율</th><th>저가 (전날比)</th><th>고가 (전날比)</th><th>시가 (위치)</th></tr></thead><tbody>${rows.join("")}</tbody></table>`;
+  $("tbl-hint").textContent = `최근 ${rows.length}일 · 종가는 밤 8시 마감가`;
+}
+
+function renderAll() {
+  MORNING = fitMorning();
+  if (typeof renderPremium === "function" && $("g-out")) setTimeout(renderPremium, 0);
+  renderMorning(); renderScenario(); renderIntra(); renderTable();
+}
+
+/* ---------- initial fill ---------- */
+function latestEvening() {
+  const ks = Object.keys(evenings).map(Number).filter((k) => k < T.ymd).sort((a, b) => b - a);
+  return ks.length ? { ymd: ks[0], ...evenings[ks[0]] } : null;
+}
+function initForm() {
+  const h = dayHistory().filter((r) => r.date < T.ymd);
+  const today = saved[T.ymd];
+  const prev = h[h.length - 1];
+  if (today && today.inputs) {
+    for (const k of ["pc", "po", "ph", "pl", "mp", "mc", "ep", "ec"]) setField(k, today.inputs[k]);
+    if (today.inputs.src) Object.assign(SRC, today.inputs.src);
+    $("pc-from").textContent = "";
+  } else if (prev) {
+    setField("pc", prev.c); setField("po", prev.o); setField("ph", prev.h); setField("pl", prev.l);
+    $("pc-from").textContent = `${ymdLabel(prev.date)} 값`;
+    SRC.pc = `${ymdLabel(prev.date)} 마감`;
+  }
+  const ev = latestEvening();
+  if (!(today && today.inputs && today.inputs.ep) && ev) { setField("ep", ev.price); setField("ec", ev.change); $("eve-from").textContent = `${ymdLabel(ev.ymd)} ${ev.time || ""} 사진`; SRC.eve = `${ymdLabel(ev.ymd)} ${ev.time || "저녁"}`; }
+  if (exampleShown && ((today && today.inputs) || ev)) {
+    exampleShown = false;
+    if (!(today && today.inputs && today.inputs.mp)) { $("f-m-p").value = ""; $("f-m-c").value = ""; }
+    if (!ev && !(today && today.inputs && today.inputs.ep)) { $("f-e-p").value = ""; $("f-e-c").value = ""; }
+  }
+  if (!(today && today.inputs) && !ev && !$("f-m-p").value) {
+    // 예시: 9/17 실제 07:30 · 9/16 20:00 값
+    exampleShown = true;
+    setField("mp", 177.55); setField("mc", 2.68); setField("ep", 179.91); setField("ec", 5.08);
+    $("eve-from").textContent = "예시 (9/17 값)"; SRC.eve = "예시 9/16 20:00"; SRC.morn = "예시 9/17 07:30";
+  }
+  if (today && Array.isArray(today.updates) && today.updates.length) {
+    const u = today.updates[today.updates.length - 1];
+    setField("time", u.t); setField("price", u.price); setField("hi", u.hi); setField("lo", u.lo);
+  }
+  $("model-basis").textContent = `${fitMorning().n}일치 데이터 기준 · 기록이 쌓일수록 더 정확해져요`;
+  renderAll();
+}
+for (const id of [...Object.values(FIELDS), "f-time"]) $(id).addEventListener("input", renderAll);
+$("f-scen").addEventListener("input", renderScenario);
+
+$("now").textContent = `${T.date.slice(5).replace("-", "/")} (${WD[T.wd]}) ${T.time} 기준 · 버전 25`;
+$("phase").textContent = phaseOf(T.hhmm);
+
+for (const b of document.querySelectorAll("nav.tabs button")) {
+  b.onclick = () => {
+    for (const x of document.querySelectorAll("nav.tabs button")) x.setAttribute("aria-selected", x === b);
+    for (const v of document.querySelectorAll("section.view")) v.hidden = v.id !== b.dataset.v;
+    window.scrollTo(0, 0);
+  };
+}
+
+/* ---------- photos + start ---------- */
+let shots = [], sampleFn = null, imgLimits = null;
+function renderShots() {
+  $("shots").innerHTML = shots.map((f, k) => `<span class="chip num">사진 ${k + 1} · ${Math.round((f.size || 0) / 1024)}KB <button type="button" data-k="${k}" aria-label="사진 빼기" style="border:0;background:none;padding:0 0 0 6px;cursor:pointer">×</button></span>`).join("");
+  for (const b of $("shots").querySelectorAll("button")) b.onclick = () => { shots.splice(+b.dataset.k, 1); renderShots(); };
+}
+const PICK_KEY = "hynix-picking";
+function markPicking(on) { try { on ? sessionStorage.setItem(PICK_KEY, String(Date.now())) : sessionStorage.removeItem(PICK_KEY); } catch (e) {} }
+const DBG = [];
+function dbg(m) {
+  const d = new Date();
+  DBG.push(kst().time + ":" + String(d.getSeconds()).padStart(2, "0") + " " + m);
+  if (DBG.length > 60) DBG.shift();
+  const el = $("dbg"); if (el) el.textContent = DBG.join("\n");
+}
+// 안드로이드는 고른 파일을 나중에 못 읽게 되는 경우가 있어, 받자마자 메모리로 복사한다
+function copyFile(f) {
+  return new Promise((ok, no) => {
+    let done = false;
+    const fr = new FileReader();
+    const timer = setTimeout(() => { if (!done) { done = true; no(new Error("읽기 시간초과 8초")); } }, 8000);
+    fr.onload = () => { if (done) return; done = true; clearTimeout(timer); ok(new Blob([fr.result], { type: f.type || "image/jpeg" })); };
+    fr.onerror = () => { if (done) return; done = true; clearTimeout(timer); no(fr.error || new Error("읽기 실패")); };
+    try { fr.readAsArrayBuffer(f); } catch (e) { done = true; clearTimeout(timer); no(e); }
+  });
+}
+let pickPoll = null, taking = false;
+function stopPoll() { if (pickPoll) { clearInterval(pickPoll); pickPoll = null; } }
+async function takeFrom(input, via) {
+  if (taking) return;
+  let files = [];
+  try { files = Array.from(input.files || []); } catch (e) { dbg("files 읽기 오류 " + e.message); return; }
+  dbg(via + ": 파일 " + files.length + "개");
+  if (!files.length) return;
+  taking = true; stopPoll();
+  try {
+    const f = files[0];
+    dbg("파일 " + (f.name || "?") + " · " + (f.type || "형식 없음") + " · " + Math.round((f.size || 0) / 1024) + "KB");
+    setStatus("사진 받음 · Claude에게 보내는 중…");
+    // 참고용 시험: 이 화면에서 파일 내용을 읽을 수 있는지 (결과만 기록, 기다리지 않음)
+    Promise.race([f.arrayBuffer().then((a) => "읽기 가능 " + Math.round(a.byteLength / 1024) + "KB"),
+                  new Promise((ok) => setTimeout(() => ok("5초 동안 읽기 응답 없음"), 5000))])
+      .then((m) => dbg("시험: " + m)).catch((e) => dbg("시험: 읽기 오류 " + (e && e.message)));
+    shots.push(f); renderShots();
+    await readShots();
+    try { input.value = ""; } catch (e) {}
+  } catch (e) {
+    dbg("오류 " + ((e && (e.code || e.message)) || e));
+    setStatus("사진을 받지 못했어요 [" + ((e && (e.code || e.message)) || "알 수 없음") + "]", true);
+  } finally { taking = false; }
+}
+for (const [id, name] of [["shotfile", "방법1"], ["shotfile2", "방법2"]]) {
+  const el = $(id);
+  el.addEventListener("click", () => {
+    dbg(name + " 누름"); setStatus("사진첩 여는 중…");
+    stopPoll(); const t0 = Date.now();
+    pickPoll = setInterval(() => {
+      let n = 0; try { n = (el.files || []).length; } catch (e) {}
+      if (n) { dbg(name + " 확인: 파일 들어옴"); takeFrom(el, name + " 확인"); }
+      else if (Date.now() - t0 > 120000) { stopPoll(); dbg(name + " 2분 동안 파일 없음"); }
+    }, 500);
+  });
+  for (const ev of ["change", "input"]) el.addEventListener(ev, () => { dbg(name + " " + ev + " 신호"); takeFrom(el, name + " " + ev); });
+  el.addEventListener("cancel", () => { dbg(name + " 취소"); stopPoll(); });
+}
+document.addEventListener("visibilitychange", () => dbg("화면 " + (document.hidden ? "가려짐" : "다시 보임")));
+window.addEventListener("pageshow", (e) => dbg("pageshow" + (e.persisted ? " (복원)" : "")));
+window.addEventListener("pagehide", () => dbg("pagehide"));
+window.addEventListener("focus", () => dbg("창 다시 선택됨"));
+
+window.addEventListener("error", (e) => { dbg("화면 오류 " + e.message); setStatus("화면 오류 [" + (e.message || "알 수 없음") + "]", true); });
+window.addEventListener("unhandledrejection", (e) => { const r = e.reason; dbg("처리 오류 " + ((r && (r.code || r.message)) || r)); });
+dbg("화면 열림 · 버전 25");
+// 사진첩이 열린 사이 휴대폰이 화면을 새로 고쳤는지 확인
+try {
+  const t0 = +sessionStorage.getItem(PICK_KEY);
+  if (t0 && Date.now() - t0 < 10 * 60 * 1000) {
+    setTimeout(() => setStatus("사진을 고르는 동안 화면이 새로 열려서 사진이 사라졌어요. 다른 앱을 닫고 다시 해보세요. [새로고침]", true), 300);
+  }
+  sessionStorage.removeItem(PICK_KEY);
+} catch (e) {}
+// 캡처가 크면 거절될 수 있어 긴 변 1800px JPEG로 줄인다
+const withTimeout = (pr, ms) => Promise.race([pr, new Promise((_, no) => setTimeout(() => no(new Error("timeout")), ms))]);
+async function shrink(file) {
+  // 이 화면에서는 이미지 그리기가 막혀 멈출 수 있다. 3초 안에 안 되면 원본을 그대로 쓴다.
+  try {
+    if (typeof createImageBitmap !== "function") return file;
+    const bmp = await withTimeout(createImageBitmap(file), 3000);
+    const k = Math.min(1, 1800 / Math.max(bmp.width, bmp.height));
+    if (k >= 1 && file.size < 4 * 1024 * 1024) return file;
+    const c = document.createElement("canvas");
+    c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+    const b = await withTimeout(new Promise((ok) => c.toBlob(ok, "image/jpeg", 0.9)), 3000);
+    return b || file;
+  } catch (e) { return file; }
+}
+function setStatus(t, err) { $("status").textContent = t; $("status").className = "status" + (err ? " err" : ""); }
+
+const EXTRACT = (nowLabel) => `다음 사진들은 대신증권 모바일 앱 캡처다. 지금은 ${nowLabel} (한국시간)이다.
+사진마다 무엇이 보이는지 읽어서 JSON으로만 답하라.
+
+읽을 대상:
+- "adr": SK하이닉스(ADR), 티커 SKHY, 나스닥. 달러 가격, 전일대비 달러 변동, 등락률 %.
+- "hynix": SK하이닉스 국내 주식(A000660). 현재가(원), 전일대비(원), 등락률 %, 화면에 보이면 시가/고가/저가.
+상승(빨강, ▲)은 양수, 하락(파랑, ▼)은 음수로 부호를 반드시 붙인다.
+screen_time: 화면 맨 위 휴대폰 시계(HH:MM). 안 보이면 null.
+screen_date: 화면 어딘가에 보이는 캡처 날짜(휴대폰 상단, 알림, 앱 안의 날짜 표시 등)를 YYYY-MM-DD로. 연도가 없으면 올해. 확실하지 않으면 null.
+관심종목 목록 사진이면 SKHY 줄과 SK하이닉스 줄을 각각 따로 읽는다. 다른 종목은 무시한다.
+안 보이거나 흐린 값은 추측하지 말고 null.
+
+형식:
+{"readings":[{"photo":1,"kind":"adr"|"hynix","screen_date":"YYYY-MM-DD"|null,"screen_time":"HH:MM"|null,"price":number|null,"change":number|null,"pct":number|null,"open":number|null,"high":number|null,"low":number|null}],"note":"읽기 어려웠던 점, 없으면 빈 문자열"}`;
+
+function ymdFromScreen(sd, t) {
+  if (sd) {
+    const m = String(sd).match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/) || String(sd).match(/(\d{1,2})\D(\d{1,2})/);
+    if (m) {
+      const y = m.length === 4 ? +m[1] : +String(T.ymd).slice(0, 4);
+      const mo = m.length === 4 ? +m[2] : +m[1], d = m.length === 4 ? +m[3] : +m[2];
+      const v = y * 10000 + mo * 100 + d;
+      if (v <= T.ymd && v > T.ymd - 10000) return v;
+    }
+  }
+  // 날짜가 안 보이면: 지금보다 늦은 시각이면 어제(직전 평일) 사진으로 본다
+  return t > kst().hhmm + 5 ? prevWeekday(T.ymd) : T.ymd;
+}
+async function mergeDay(ymd, patch) {
+  if (!db) return;
+  try {
+    const ref = db.doc("days/" + ymd); const cur = await ref.get();
+    const base = cur.exists ? cur.data() : { date: ymd };
+    const next = { ...base, date: ymd };
+    for (const [k, v] of Object.entries(patch)) next[k] = (v && typeof v === "object" && !Array.isArray(v)) ? { ...(base[k] || {}), ...v } : v;
+    await ref.set(next);
+  } catch (e) {}
+}
+const signTxt = (v) => v == null ? "" : ` (${v > 0 ? "+" : ""}${v})`;
+
+async function applyReadings(res) {
+  const log = [];
+  const readings = Array.isArray(res && res.readings) ? res.readings : [];
+  for (const r of readings) {
+    const t = parseTime(r.screen_time) ?? kst().hhmm;
+    const ymd = ymdFromScreen(r.screen_date, t);
+    const isToday = ymd === T.ymd;
+    const when = `${ymdLabel(ymd)} ${hhmmLabel(t)}`;
+    const price = num(r.price), change = num(r.change);
+    if (!price) continue;
+    if (db) { try { await db.collection("photos").add({ at: Date.now(), ymd, time: t, kind: r.kind, price, change, open: num(r.open), high: num(r.high), low: num(r.low) }); } catch (e) {} }
+
+    if (r.kind === "adr") {
+      if (t >= 2230 || t < 530) {
+        // 미국 정규장이 열려 있는 시간 사진은 정확도가 크게 떨어져서 쓰지 않는다 (37일 검증)
+        log.push(`${when} ADR 사진은 미국장 시간이라 안 썼어요 (밤 10:20 전이나 새벽 5:30 뒤 사진을 올려주세요)`);
+      } else if (t >= 1700) {
+        // 저녁 ADR: 다음 거래일 아침 계산에 쓴다
+        const doc = { ymd, price, change, time: hhmmLabel(t) };
+        evenings[ymd] = doc;
+        if (db) { try { await db.doc("evening/" + ymd).set(doc); } catch (e) {} }
+        if (ymd < T.ymd) { setField("ep", price); setField("ec", change); $("eve-from").textContent = `${when} 사진`; exampleShown = false; SRC.eve = when; }
+        log.push(`${when} 저녁 ADR ${price}${signTxt(change)}`);
+      } else {
+        if (isToday) { setField("mp", price); setField("mc", change); exampleShown = false; SRC.morn = when; if (SRC.eve && SRC.eve.startsWith("예시")) SRC.eve = null; mornT = t; }
+        else await mergeDay(ymd, { inputs: { mp: price, mc: change } });
+        log.push(`${when} 아침 ADR ${price}${signTxt(change)}`);
+      }
+    } else if (r.kind === "hynix") {
+      const o = num(r.open), hh = num(r.high), ll = num(r.low);
+      if (t < 800) {
+        // 장 시작 전 화면 = 전 거래일 마감 값
+        const pd = prevWeekday(ymd);
+        if (isToday) { setField("pc", price); setField("po", o); setField("ph", hh); setField("pl", ll); $("pc-from").textContent = `${when} 사진`; SRC.pc = `${ymdLabel(pd)} 마감`; }
+        if (hh && ll) await mergeDay(pd, { actual: { o: o || price, h: hh, l: ll, c: price } });
+        log.push(`${ymdLabel(pd)} 하이닉스 마감 ${won(price)}원`);
+      } else if (t >= 2000) {
+        if (hh && ll) await mergeDay(ymd, { actual: { o: o || price, h: hh, l: ll, c: price } });
+        log.push(`${ymdLabel(ymd)} 하이닉스 마감 ${won(price)}원 기록`);
+      } else {
+        if (isToday) { setField("time", t); setField("price", price); setField("hi", hh); setField("lo", ll); }
+        log.push(`${when} 하이닉스 ${won(price)}원`);
+      }
+    }
+  }
+  if (!log.length) log.push("사진에서 ADR이나 하이닉스 가격을 못 찾았어요");
+  return log;
+}
+
+let reading = false;
+let mornT = null;   // 오늘 아침 ADR 사진 시각 (HHMM)
+async function readShots() {
+  if (reading || !shots.length) return;
+  reading = true;
+  try {
+    if (!sampleFn) { setStatus("Claude 연결 기다리는 중…"); try { sampleFn = await claude.use("sample"); } catch (e) {} }
+    if (!sampleFn) { dbg("Claude 연결 없음"); setStatus("Claude에 연결이 안 됐어요. 페이지를 다시 열어주세요. [sample 없음]", true); return; }
+    if (!imgLimits) { try { const lim = await sampleFn.limits(); imgLimits = lim && lim.images ? lim.images : null; } catch (e) {} }
+    if (!imgLimits) { dbg("이 화면은 사진 보내기 미지원"); setStatus("이 화면에서는 사진 보내기가 안 돼요. [images 없음]", true); return; }
+    setStatus("사진 읽는 중…");
+    const batch = shots.slice(0, imgLimits.maxCount);
+    dbg("Claude에게 사진 " + batch.length + "장 보냄 (허용 " + Math.round(imgLimits.maxInputBytes / 1024) + "KB)");
+    const t0 = Date.now();
+    const beat = setInterval(() => dbg("기다리는 중 " + Math.round((Date.now() - t0) / 1000) + "초"), 3000);
+    const ctl = new AbortController();
+    const kill = setTimeout(() => { dbg("90초 동안 응답 없어 멈춤"); ctl.abort(); }, 90000);
+    let res;
+    try {
+      res = await sampleFn.json(EXTRACT(`${T.date} ${kst().time}`), { images: batch, cache: false, signal: ctl.signal });
+    } finally { clearInterval(beat); clearTimeout(kill); }
+    dbg("Claude 응답: 읽은 값 " + ((res && res.readings && res.readings.length) || 0) + "개");
+    const log = await applyReadings(res);
+    shots = shots.slice(batch.length); renderShots();
+    renderAll(); await saveToday();
+    setStatus("저장했어요 · " + log.join(" · ") + (res && res.note ? ` · ${res.note}` : ""));
+  } catch (e) {
+    const code = e && e.code;
+    dbg("사진 읽기 오류 " + (code || (e && e.message) || e));
+    setStatus(code === "invalid_json" ? "사진을 못 읽었어요. 다시 캡처해서 올려주세요." : (ERR[code] || "사진을 못 읽었어요.") + ` [${code || (e && e.message) || "알 수 없음"}]`, true);
+  } finally {
+    reading = false;
+    if (shots.length) readShots();
+  }
+}
+
+async function saveToday() {
+  if (!db) return;
+  const inp = readInputs(), s = signalsFrom(inp);
+  if (!inp.pc) return;
+  try {
+    const ref = db.doc("days/" + T.ymd); const cur = await ref.get();
+    const base = cur.exists ? cur.data() : { date: T.ymd };
+    const next = { ...base, date: T.ymd, inputs: { pc: inp.pc, po: inp.po, ph: inp.ph, pl: inp.pl, mp: inp.mp, mc: inp.mc, ep: inp.ep, ec: inp.ec, src: { ...SRC } } };
+    // 그 시점 예측을 기록 (같은 입력이면 다시 쌓지 않음)
+    {
+      const snap = { at: kst().hhmm, pc: inp.pc, src: { ...SRC }, comment: "" };
+      if (Object.keys(s).length) {
+        snap.sig = Object.fromEntries(Object.entries(s).map(([k, v]) => [k, +v.toFixed(3)]));
+        snap.pred = {};
+        for (const k of Object.keys(s)) { const m = morning(k, s[k]); snap.pred[k] = {}; for (const [key] of KEYS) snap.pred[k][key] = { p: +m[key].p.toFixed(2), lo80: +m[key].lo80.toFixed(2), hi80: +m[key].hi80.toFixed(2) }; }
+      }
+      const atr0 = atrFor(T.ymd);
+      if (inp.price && inp.time != null && atr0) {
+        const r0 = intraday(inp.time, inp.price, inp.hi, inp.lo, inp.pc, atr0);
+        if (!r0.error) {
+          const f = (v) => ({ p: +v.p.toFixed(2), lo80: +v.lo80.toFixed(2), hi80: +v.hi80.toFixed(2) });
+          snap.intra = { t: inp.time, price: inp.price, hi: inp.hi, lo: inp.lo, close: f(r0.close), high: f(r0.high), low: f(r0.low) };
+        }
+      }
+      const key = JSON.stringify([snap.pc, snap.sig, snap.intra && [snap.intra.t, snap.intra.price, snap.intra.hi, snap.intra.lo]]);
+      const list = Array.isArray(base.snaps) ? base.snaps.slice(-29) : [];
+      if ((snap.pred || snap.intra) && (!list.length || list[list.length - 1].key !== key)) { snap.key = key; list.push(snap); }
+      next.snaps = list;
+    }
+    // 8시 전에 찍은 ADR 사진으로 나온 예측은 따로 고정해 둔다 (이후 사진으로 바뀌지 않음)
+    if (mornT != null && mornT <= 800 && Object.keys(s).length && inp.pc) {
+      const pred = {};
+      for (const k of Object.keys(s)) { const m = morning(k, s[k]); pred[k] = {}; for (const [key] of KEYS) pred[k][key] = { p: +m[key].p.toFixed(2), lo80: +m[key].lo80.toFixed(2), hi80: +m[key].hi80.toFixed(2) }; }
+      next.snap0730 = { t: mornT, pc: inp.pc, src: { ...SRC }, sig: Object.fromEntries(Object.entries(s).map(([k, v]) => [k, +v.toFixed(3)])), pred, comment: (base.snap0730 || {}).comment || "" };
+    }
+    if (Object.keys(s).length) {
+      next.signals = Object.fromEntries(Object.entries(s).map(([k, v]) => [k, +v.toFixed(3)]));
+      next.morning = {};
+      for (const k of Object.keys(s)) { const m = morning(k, s[k]); next.morning[k] = {}; for (const [key] of KEYS) next.morning[k][key] = { p: +m[key].p.toFixed(2), lo80: +m[key].lo80.toFixed(2), hi80: +m[key].hi80.toFixed(2) }; }
+    }
+    const atr = atrFor(T.ymd);
+    if (inp.price && inp.time != null && atr) {
+      const r = intraday(inp.time, inp.price, inp.hi, inp.lo, inp.pc, atr);
+      if (!r.error) {
+        const ups = Array.isArray(base.updates) ? base.updates.filter((u) => u.t !== inp.time).slice(-20) : [];
+        ups.push({ t: inp.time, price: inp.price, hi: inp.hi, lo: inp.lo, close: { p: +r.close.p.toFixed(2), lo80: +r.close.lo80.toFixed(2), hi80: +r.close.hi80.toFixed(2) } });
+        next.updates = ups;
+      }
+    }
+    await ref.set(next);
+  } catch (e) {}
+}
+
+let startCtl = null;
+async function start() {
+  if (startCtl) { startCtl.abort(); return; }
+  startCtl = new AbortController();
+  $("startbtn").textContent = "멈추기";
+  try {
+    if (shots.length) await readShots();
+    renderAll();
+    await saveToday();
+    if (!sampleFn) return;
+    $("c-comment").hidden = false;
+    $("comment").textContent = "정리 중…";
+    $("c-comment").scrollIntoView({ behavior: "smooth", block: "start" });
+    const prompt = rules() + `\n\n[요청]\n방금 시작 버튼을 눌렀다. 오늘을 4줄 이내로 아주 쉽게 정리하라. 1줄: 오를 쪽인지 내릴 쪽인지(ADR 어젯밤 8시 → 아침 7:30 기준, 확신이 없으면 그렇다고 말하기). 2줄: 예상 종가 가격과 범위. 3줄: 예상 고가·저가 가격. 4줄: 조심할 점(없으면 생략). A·B·C, 상관계수, 표본 같은 말은 쓰지 않는다. 장중 가격이 있으면 2~3줄은 장중 기준으로. 도구 없이 페이지 상태 숫자만 쓴다.`;
+    const out = await sampleFn(prompt, { signal: startCtl.signal, cache: false, onText: ({ text }) => { $("comment").textContent = text; } });
+    $("comment").textContent = out.text;
+    if (db) {
+      try {
+        const ref = db.doc("days/" + T.ymd); const cur = await ref.get();
+        if (cur.exists) {
+          const v = cur.data(), patch = {};
+          if (Array.isArray(v.snaps) && v.snaps.length) { const l = v.snaps.slice(); l[l.length - 1] = { ...l[l.length - 1], comment: out.text }; patch.snaps = l; }
+          if (v.snap0730 && !v.snap0730.comment && kst().hhmm <= 830) patch.snap0730 = { ...v.snap0730, comment: out.text };
+          if (Object.keys(patch).length) await ref.update(patch);
+        }
+      } catch (e) {}
+    }
+  } catch (e) {
+    const code = e && e.code;
+    if (code === "cancelled") setStatus("멈췄습니다.");
+    else if (code === "invalid_json") setStatus("사진을 못 읽었어요. 다시 캡처해서 올려주세요.", true);
+    else setStatus((ERR[code] || "안 됐어요. 다시 눌러주세요.") + ` [${code || (e && e.message) || "알 수 없음"}]`, true);
+    if ($("comment").textContent === "정리 중…") $("c-comment").hidden = true;
+  } finally {
+    startCtl = null; $("startbtn").textContent = "오늘 예측 보기";
+  }
+}
+$("startbtn").onclick = start;
+
+/* ---------- log ---------- */
+function hitTag(pred, act) {
+  if (!pred || act == null) return "";
+  const ok = act >= pred.lo80 && act <= pred.hi80;
+  return `<span class="hit ${ok ? "ok" : "no"}">${ok ? "범위 안" : "범위 밖"}</span>`;
+}
+function renderLog() {
+  const days = Object.values(saved).filter((d) => d.inputs || d.morning).sort((a, b) => b.date - a.date);
+  if (!days.length) { $("log").innerHTML = `<p class="muted" style="padding:0 4px">아직 기록이 없습니다. 예측 탭에서 시작을 누르면 쌓입니다.</p>`; return; }
+  $("log").innerHTML = days.map((d) => {
+    const pc = d.inputs && d.inputs.pc, sk = d.morning ? (d.morning.B ? "B" : Object.keys(d.morning)[0]) : null;
+    const mB = sk ? d.morning[sk] : null, a = d.actual || {};
+    const ap = (v) => (pc && v ? (v / pc - 1) * 100 : null);
+    const rows = KEYS.map(([k, l]) => {
+      const pr = mB && mB[k], act = ap(a[{ open: "o", high: "h", low: "l", close: "c" }[k]]);
+      return `<span>${l}</span><span class="num ${pr ? sgn(pr.p) : ""}">${pr ? pct(pr.p) : "–"}</span><span class="num ${act != null ? sgn(act) : ""}">${act != null ? pct(act) : "–"}</span><span>${hitTag(pr, act)}</span>`;
+    }).join("");
+    const up = Array.isArray(d.updates) && d.updates.length ? d.updates[d.updates.length - 1] : null;
+    const sigTxt = d.signals ? ["A", "B", "C"].filter((k) => d.signals[k] != null).map((k) => `${k} ${pct(d.signals[k], 2)}`).join(" · ") : "";
+    return `<div class="day"><div class="d"><b>${ymdLabel(d.date)} (${WD[wdOf(d.date)]})</b><span class="muted num" style="font-size:12px">${sigTxt}</span></div>
+      <div class="grid4"><span class="h"></span><span class="h">예상${sk ? " (" + sk + ")" : ""}</span><span class="h">실제</span><span class="h"></span>${rows}</div>
+      ${up ? `<div class="muted" style="font-size:12px">마지막 장중 기록 ${hhmmLabel(up.t)} · 종가 예상 ${pct(up.close.p)} (${pct(up.close.lo80)} ~ ${pct(up.close.hi80)})</div>` : ""}
+      ${d.actual ? "" : `<div class="muted" style="font-size:12px">실제 결과 없음 · 20:00 뒤 하이닉스 화면 사진으로 시작을 누르면 채워집니다</div>`}
+    </div>`;
+  }).join("");
+}
+
+/* ---------- chat ---------- */
+let turns = [], busy = null, attached = null;
+
+function stateForClaude() {
+  const inp = readInputs(), s = signalsFrom(inp), atr = atrFor(T.ymd);
+  const m = {};
+  for (const k of Object.keys(s)) {
+    const mm = morning(k, s[k]); m[k] = { 신호pct: +s[k].toFixed(2), 종가예측력r: +MORNING.signals[k].close.r.toFixed(2) };
+    for (const [key, l] of KEYS) m[k][l] = { 예상pct: +mm[key].p.toFixed(1), 예상가: inp.pc ? priceAt(inp.pc, mm[key].p) : null, 범위80pct: [+mm[key].lo80.toFixed(1), +mm[key].hi80.toFixed(1)], 범위80가: inp.pc ? [priceAt(inp.pc, mm[key].lo80), priceAt(inp.pc, mm[key].hi80)] : null };
+  }
+  let intra = null;
+  if (inp.pc && inp.price && inp.time != null && atr) {
+    const r = intraday(inp.time, inp.price, inp.hi, inp.lo, inp.pc, atr);
+    if (!r.error) intra = { 시각: hhmmLabel(inp.time), 현재가: inp.price, 오늘고가: inp.hi, 오늘저가: inp.lo, 지금pct: +r.now.toFixed(2),
+      종가: { 예상pct: +r.close.p.toFixed(1), 범위80pct: [+r.close.lo80.toFixed(1), +r.close.hi80.toFixed(1)], 범위80가: [priceAt(inp.pc, r.close.lo80), priceAt(inp.pc, r.close.hi80)] },
+      최종고가상단90pct: +r.high.hi80.toFixed(1), 최종저가하단10pct: +r.low.lo80.toFixed(1) };
+  }
+  return { 지금: `${T.date} ${kst().time} KST`, 전날: { 종가: inp.pc, 시가: inp.po, 고가: inp.ph, 저가: inp.pl }, 최근10일평균변동폭pct: atr ? +atr.toFixed(2) : null,
+    ADR: { 아침가격: inp.mp, 아침전일대비: inp.mc, 어젯밤가격: inp.ep, 어젯밤전일대비: inp.ec },
+    아침예상_신호별: m, 장중예상: intra, 최근5일: dayHistory().slice(-5) };
+}
+function rules() {
+  return `너는 SK하이닉스 단타 판단을 돕는 분석 도우미다. 사용자는 비전문가이고 한국어로 대화한다. 투자 판단과 책임은 사용자에게 있다.
+
+[데이터 정의]
+- 모든 %는 하이닉스 "전날 20:00 애프터마켓 종가" 대비. 대신증권 앱 %는 전날 15:30 정규장 종가 기준이라 조금 다를 수 있다.
+- ADR = 나스닥 SKHY. 신호 A = 아침 07:30 앱에 뜬 % (미국 정규장 종가 대비 애프터 몫만). 신호 B = 07:30 ADR 가격 ÷ 어젯밤 20:00 ADR 가격 (하이닉스 전날 종가 이후 새 움직임). 신호 C = 미국 정규장 ADR 등락.
+- 검증(${MORNING.n}일): B가 가장 안정적(한 날씩 빼고 예측 오차 시가 1.6%p, 종가 4.1%p). A는 신호 없이 평균을 쓰는 것보다 오차가 컸다. A+B+C를 합친 계산식은 B 하나보다 오차가 커서 합치지 않는다. 기준은 B.
+- 장중 예상: 193일 5분봉에서 해당 시각 이후 남은 움직임 분포를 최근 10일 평균 변동폭으로 조정하고, 전날 등락률을 반영(전날 많이 오를수록 남은 시간 약세). 거래량·SOXQ는 검증에서 효과가 없어 넣지 않았다. 뒤 1/3 검증에서 80% 범위 적중률 대체로 75~85%, 저가 쪽은 65% 안팎으로 범위가 좁게 나오는 경향.
+- 등락률 가정: 종가를 x%로 가정하면 그날 시가·고가·저가 분포(191일, 변동폭 조정). 80% 범위 적중률 고가 83%, 저가 80%.
+- 하이닉스 호가 단위는 1,000원.
+
+[지금 페이지 상태]
+${JSON.stringify(stateForClaude())}
+
+[답하는 규칙]
+- 숫자는 페이지 상태나 도구(calc_morning, calc_intraday, calc_scenario) 결과에서만 가져온다. 추측으로 숫자를 만들지 않는다.
+- 사진이 오면 먼저 읽은 값(시각은 화면 상단 시계)을 밝히고, 필요한 도구로 계산한다. 입력칸에 반영하려면 fill_form을 호출한다.
+- 예상을 말할 때는 10번 중 8번 범위를 같이 말한다. 범위가 0을 걸치면 방향을 확신할 수 없다고 분명히 말한다.
+- 가격은 1,000원 단위 원으로. 상승/하락은 +, − 부호로만 쓰고 이모지나 색 동그라미는 쓰지 않는다.
+- 아주 쉬운 말로, 5줄 안팎으로 짧게. 상관계수·표본·신호 A/B/C 같은 말은 쓰지 않는다. B는 "ADR 어젯밤 8시 → 아침 7:30", A는 "ADR 아침 7:30 앱에 보이는 %", C는 "ADR 미국장 마감(새벽 5시)"이라고 부른다.
+- 괴리율 = ADR 가격 x 환율 x 10 / 하이닉스 가격 - 1 (ADR 1주 = 본주 0.1주). 계산은 calc_premium 도구로 한다. 최근 괴리율은 대략 +35~41%.
+- 사진이 흐리거나 대신증권 화면이 아니면 추측하지 말고 다시 보내달라고 한다.`;
+}
+const P2 = (pc, v) => ({ pct: +v.toFixed(2), 가격: pc ? priceAt(pc, v) : null });
+const TOOLS = [
+  { name: "calc_morning",
+    description: "ADR 값으로 오늘 하이닉스 시가/고가/저가/종가를 신호 A,B,C별로 계산. 반환: 신호별 예상 %와 가격, 80% 범위. 생략한 값은 페이지 값을 쓴다.",
+    inputSchema: { type: "object", properties: { prev_close: { type: "number" }, adr_morning_price: { type: "number" }, adr_morning_change: { type: "number", description: "달러 전일대비" }, adr_evening_price: { type: "number", description: "어젯밤 20:00 가격" }, adr_evening_change: { type: "number" } } },
+    execute: (i) => {
+      const cur = readInputs(); const pc = num(i.prev_close) ?? cur.pc;
+      const s = signalsFrom({ mp: num(i.adr_morning_price) ?? cur.mp, mc: num(i.adr_morning_change) ?? cur.mc, ep: num(i.adr_evening_price) ?? cur.ep, ec: num(i.adr_evening_change) ?? cur.ec });
+      if (!Object.keys(s).length) throw new Error("ADR 값이 부족합니다");
+      const out = { 전날종가: pc };
+      for (const k of Object.keys(s)) { const m = morning(k, s[k]); out[k] = { 신호pct: +s[k].toFixed(2) }; for (const [key, l] of KEYS) out[k][l] = { 예상: P2(pc, m[key].p), 범위80: [P2(pc, m[key].lo80), P2(pc, m[key].hi80)] }; }
+      return out;
+    } },
+  { name: "calc_intraday",
+    description: "장중 시각(HH:MM)과 현재가(와 오늘 고가/저가)로 오늘 종가 범위, 최종 고가/저가 여지를 계산. 08:10 이후만.",
+    inputSchema: { type: "object", properties: { time: { type: "string" }, price: { type: "number" }, high_so_far: { type: "number" }, low_so_far: { type: "number" }, prev_close: { type: "number" } }, required: ["time", "price"] },
+    execute: (i) => {
+      const cur = readInputs(), t = parseTime(i.time), price = num(i.price), pc = num(i.prev_close) ?? cur.pc, atr = atrFor(T.ymd);
+      if (t == null || !price) throw new Error("시각과 현재가가 필요합니다");
+      if (!pc || !atr) throw new Error("전날 종가 또는 최근 변동폭이 없습니다");
+      const r = intraday(t, price, num(i.high_so_far), num(i.low_so_far), pc, atr);
+      if (r.error) throw new Error(r.error);
+      return { 전날종가: pc, 변동폭pct: +atr.toFixed(2), 지금: P2(pc, r.now), 종가: { 예상: P2(pc, r.close.p), 범위50: [P2(pc, r.close.lo50), P2(pc, r.close.hi50)], 범위80: [P2(pc, r.close.lo80), P2(pc, r.close.hi80)] },
+        최종고가: { 중앙: P2(pc, r.high.p), 상위90: P2(pc, r.high.hi80) }, 최종저가: { 중앙: P2(pc, r.low.p), 하위10: P2(pc, r.low.lo80) } };
+    } },
+  { name: "calc_scenario",
+    description: "오늘 종가 등락률을 x%로 가정했을 때 시가/고가/저가 범위를 계산. 사용자가 '2% 오른다고 치면' 같은 가정을 말할 때 쓴다.",
+    inputSchema: { type: "object", properties: { close_pct: { type: "number" }, prev_close: { type: "number" } }, required: ["close_pct"] },
+    execute: (i) => {
+      const x = num(i.close_pct), pc = num(i.prev_close) ?? readInputs().pc, atr = atrFor(T.ymd);
+      if (x == null || !atr) throw new Error("가정 등락률이 필요합니다");
+      const r = scenario(x, atr);
+      const f = (v) => ({ 중앙: P2(pc, v.p), 범위50: [P2(pc, v.lo50), P2(pc, v.hi50)], 범위80: [P2(pc, v.lo80), P2(pc, v.hi80)] });
+      return { 전날종가: pc, 가정종가: P2(pc, x), 시가: f(r.open), 고가: f(r.high), 저가: f(r.low) };
+    } },
+  { name: "calc_premium",
+    description: "괴리율 계산. ADR 가격($), 환율, 괴리율(%)을 주면 하이닉스 원화 가격을 돌려준다. 괴리율 대신 하이닉스 가격을 주면 괴리율을 돌려준다. 환율을 모르면 생략(페이지 값 사용).",
+    inputSchema: { type: "object", properties: { adr_price: { type: "number" }, fx: { type: "number" }, premium_pct: { type: "number" }, hynix_price: { type: "number" } }, required: ["adr_price"] },
+    execute: (i) => {
+      const adr = num(i.adr_price), fx = num(i.fx) ?? num($("g-fx").value), pr = num(i.premium_pct), hx = num(i.hynix_price);
+      if (!adr || !fx) throw new Error("ADR 가격과 환율이 필요합니다");
+      const eq = adr * fx * 10;
+      if (pr != null) return { 환율: fx, ADR원화환산: Math.round(eq), 괴리율pct: pr, 하이닉스가격: tick(eq / (1 + pr / 100)) };
+      if (hx) return { 환율: fx, ADR원화환산: Math.round(eq), 하이닉스가격: hx, 괴리율pct: +((eq / hx - 1) * 100).toFixed(1) };
+      throw new Error("괴리율이나 하이닉스 가격 중 하나가 필요합니다");
+    } },
+  { name: "fill_form",
+    description: "예측 탭 입력칸에 값을 넣고 화면을 갱신. 사진에서 읽거나 사용자가 알려준 값을 반영할 때. 넣지 않을 칸은 생략.",
+    inputSchema: { type: "object", properties: { prev_close: { type: "number" }, prev_open: { type: "number" }, prev_high: { type: "number" }, prev_low: { type: "number" }, adr_morning_price: { type: "number" }, adr_morning_change: { type: "number" }, adr_evening_price: { type: "number" }, adr_evening_change: { type: "number" }, time: { type: "string" }, price: { type: "number" }, high_so_far: { type: "number" }, low_so_far: { type: "number" }, scenario_pct: { type: "number" } } },
+    execute: (i) => {
+      const map = { prev_close: "pc", prev_open: "po", prev_high: "ph", prev_low: "pl", adr_morning_price: "mp", adr_morning_change: "mc", adr_evening_price: "ep", adr_evening_change: "ec", price: "price", high_so_far: "hi", low_so_far: "lo" };
+      for (const [k, f] of Object.entries(map)) if (i[k] != null) setField(f, num(i[k]));
+      if (i.time) setField("time", String(i.time));
+      if (i.scenario_pct != null) $("f-scen").value = num(i.scenario_pct);
+      renderAll(); saveToday();
+      return "입력칸을 바꿨습니다";
+    } },
+];
+
+function addMsg(role, text, img) {
+  const el = document.createElement("div");
+  el.className = "msg " + role;
+  if (img) { const im = document.createElement("img"); im.src = img; im.alt = "첨부한 사진"; el.appendChild(im); }
+  const t = document.createElement("div"); t.textContent = text; el.appendChild(t);
+  $("msgs").appendChild(el);
+  el.scrollIntoView({ block: "end", behavior: "smooth" });
+  return t;
+}
+const ERR = {
+  not_granted: "Claude 사용이 허용되지 않았습니다. 페이지를 다시 열면 다시 물어봅니다.",
+  rate_limited: "요청이 몰렸습니다. 잠시 뒤 다시 해주세요.",
+  prompt_too_large: "대화가 너무 길어졌습니다. 페이지를 새로 열어주세요.",
+  image_rejected: "사진을 읽지 못했습니다. 다른 캡처로 올려주세요.",
+  images_unavailable: "이 화면에서는 사진을 보낼 수 없습니다.",
+  refused: "이 요청에는 답할 수 없습니다.",
+  cancelled: "멈췄습니다.",
+};
+async function send(text) {
+  text = (text || "").trim();
+  if (!sampleFn || busy || (!text && !attached)) return;
+  const file = attached, shown = text || "사진 확인해줘";
+  addMsg("me", shown, file ? URL.createObjectURL(file) : null);
+  $("ask").value = ""; clearAttach();
+  const out = addMsg("ai", "생각 중…");
+  const userTurn = (file ? "[사진 첨부] " : "") + shown;
+  const input = [{ role: "user", content: rules() }, ...turns.slice(-10), { role: "user", content: userTurn }];
+  busy = new AbortController(); $("send").disabled = true;
+  let tools = TOOLS;
+  const run = () => sampleFn(input, { cache: false, signal: busy.signal, tools, images: file ? [file] : undefined, onText: ({ text }) => { out.textContent = text; } });
+  try {
+    let res;
+    try { res = await run(); } catch (e) { if (e && e.code === "tools_unavailable") { tools = undefined; res = await run(); } else throw e; }
+    out.textContent = res.text;
+    turns.push({ role: "user", content: userTurn }, { role: "assistant", content: res.text });
+  } catch (e) {
+    out.textContent = (e && e.text) || "";
+    const note = document.createElement("div"); note.className = "msg ai err";
+    note.textContent = (ERR[e && e.code] || "답을 받지 못했어요. 다시 보내주세요.") + ` [${(e && e.code) || "알 수 없음"}]`;
+    $("msgs").appendChild(note);
+    if (!out.textContent) out.parentElement.remove();
+  } finally { busy = null; $("send").disabled = false; }
+}
+function clearAttach() { attached = null; $("photo").value = ""; $("attach-row").hidden = true; }
+const CHIPS = ["오늘 어때?", "종가 +2%면 고가·저가는?", "ADR 170, 괴리율 40%면 하이닉스는?"];
+$("chips").innerHTML = CHIPS.map((c) => `<button class="chip" type="button">${c}</button>`).join("");
+for (const b of $("chips").querySelectorAll(".chip")) b.onclick = () => send(b.textContent);
+$("send").onclick = () => send($("ask").value);
+$("ask").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); send($("ask").value); } });
+$("photo").addEventListener("change", async () => {
+  const f = $("photo").files && $("photo").files[0];
+  if (!f) return;
+  attached = f; $("attach-name").textContent = "사진 1장 첨부됨"; $("attach-row").hidden = false;
+});
+$("attach-clear").onclick = clearAttach;
+addMsg("ai", "무엇이든 물어보세요. 사진도 보낼 수 있어요.");
+
+
+/* ---------- 괴리율 계산기 ---------- */
+function renderPremium() {
+  const adr = num($("g-adr").value), fx = num($("g-fx").value), pr = num($("g-prem").value);
+  $("g-fx-sum").textContent = fx ? `환율 ${fx.toLocaleString("ko-KR")}원 기준 · 바꾸기` : "환율 넣기";
+  const out = $("g-out");
+  if (!adr || !fx || pr == null) { out.innerHTML = `<span class="muted">ADR 가격과 괴리율을 넣으세요.</span>`; return; }
+  const eq = adr * fx * 10, v = tick(eq / (1 + pr / 100)), pc = readInputs().pc;
+  const chg = pc ? (v / pc - 1) * 100 : null;
+  out.innerHTML = `<span>하이닉스 <b class="num" style="font-size:22px">${won(v)}원</b></span>` +
+    (chg != null ? `<span>어제 종가 대비 <b class="num ${sgn(chg)}">${pct(chg)}</b></span>
+      <button class="chip" type="button" id="g-go" style="flex-basis:100%;margin-top:4px">이 가격으로 끝나면 고가·저가는?</button>` : "");
+  if ($("g-go")) $("g-go").onclick = () => {
+    $("f-scen").value = chg.toFixed(1);
+    renderScenario();
+    $("c-scen").scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+}
+for (const id of ["g-adr", "g-fx", "g-prem"]) $(id).addEventListener("input", renderPremium);
+function initPremium() {
+  if (!$("g-adr").value && $("f-m-p").value) $("g-adr").value = $("f-m-p").value;
+  if (!$("g-fx").value && M.fx) $("g-fx").value = M.fx.value;
+  if (!$("g-prem").value && M.prem != null) $("g-prem").value = M.prem.toFixed(1);
+  renderPremium();
+}
+
+
+/* ---------- 캡처 붙여넣기 ---------- */
+async function takePasted(e) {
+  const items = Array.from((e.clipboardData && e.clipboardData.items) || []);
+  const files = items.filter((it) => it.kind === "file" && /^image\//.test(it.type)).map((it) => it.getAsFile()).filter(Boolean);
+  if (!files.length) return;
+  e.preventDefault();
+  dbg("붙여넣기 사진 " + files.length + "장");
+  for (const f of files) shots.push(await copyFile(f));
+  renderShots();
+  readShots();
+}
+document.addEventListener("paste", takePasted);
+
+
+/* ---------- 숫자로 넣기 ---------- */
+$("q-save").onclick = async () => {
+  const adr = num($("q-adr").value), hx = num($("q-hx").value);
+  const q = (t, err) => { $("q-status").textContent = t; $("q-status").className = "status" + (err ? " err" : ""); };
+  if (!adr && !hx) { q("ADR 가격이나 하이닉스 현재가를 넣어주세요.", true); return; }
+  const now = kst(), t = hhmmLabel(now.hhmm);
+  const readings = [];
+  if (adr) readings.push({ kind: "adr", screen_date: now.date, screen_time: t, price: adr, change: null });
+  if (hx) {
+    if (now.hhmm < 800 || now.hhmm >= 2000) { q("하이닉스 현재가는 장중(08:00~20:00)에만 넣어주세요.", true); return; }
+    readings.push({ kind: "hynix", screen_date: now.date, screen_time: t, price: hx });
+  }
+  $("q-save").disabled = true;
+  try {
+    const log = await applyReadings({ readings });
+    renderAll(); await saveToday();
+    q("저장했어요 · " + log.join(" · "));
+    $("q-adr").value = ""; $("q-hx").value = "";
+  } catch (e) {
+    q("저장하지 못했어요 [" + ((e && (e.code || e.message)) || "알 수 없음") + "]", true);
+  } finally { $("q-save").disabled = false; }
+};
+
+/* ---------- 지난 예측 다시 보기 ---------- */
+let snapDay = null, snapIdx = null;
+function snapsOf(d) {
+  if (Array.isArray(d.snaps) && d.snaps.length) return d.snaps;
+  return d.snap0730 ? [{ at: d.snap0730.t, pc: d.snap0730.pc, src: d.snap0730.src, sig: d.snap0730.sig, pred: d.snap0730.pred, comment: d.snap0730.comment }] : [];
+}
+function snapDays() { return Object.values(saved).filter((d) => snapsOf(d).length).map((d) => d.date).sort((a, b) => b - a); }
+function renderSnap() {
+  const days = snapDays();
+  if (!days.length) {
+    $("snap-date").textContent = ""; $("snap-days").innerHTML = ""; $("snap-times").innerHTML = ""; $("snap-meta").innerHTML = "";
+    $("snap-comment").textContent = "아직 저장된 예측이 없어요. 사진을 올리면 그때마다 저장돼요.";
+    $("snap-ranges").innerHTML = ""; $("snap-ticks").innerHTML = "";
+    return;
+  }
+  if (!snapDay || !days.includes(snapDay)) { snapDay = days[0]; snapIdx = null; }
+  const d = saved[snapDay], list = snapsOf(d);
+  if (snapIdx == null || snapIdx >= list.length) snapIdx = list.length - 1;
+  const sp = list[snapIdx];
+
+  $("snap-date").textContent = `${ymdLabel(snapDay)} (${WD[wdOf(snapDay)]})`;
+  $("snap-days").innerHTML = days.slice(0, 10).map((x) => `<button class="chip" type="button" data-d="${x}" style="${x === snapDay ? "border-color:var(--accent);color:var(--accent);font-weight:600" : ""}">${ymdLabel(x)}</button>`).join("");
+  $("snap-times").innerHTML = list.map((x, k) => {
+    const lab = hhmmLabel(x.intra ? x.intra.t : x.at) + (x.intra ? " 장중" : " 아침");
+    return `<button class="chip num" type="button" data-k="${k}" style="${k === snapIdx ? "background:var(--accent);color:var(--accent-ink);border-color:var(--accent)" : ""}">${lab}</button>`;
+  }).join("");
+  for (const b of $("snap-days").querySelectorAll(".chip")) b.onclick = () => { snapDay = +b.dataset.d; snapIdx = null; renderSnap(); };
+  for (const b of $("snap-times").querySelectorAll(".chip")) b.onclick = () => { snapIdx = +b.dataset.k; renderSnap(); };
+
+  const a = d.actual || {}, ap = (v) => (v ? (v / sp.pc - 1) * 100 : null);
+  const act = { open: ap(a.o), high: ap(a.h), low: ap(a.l), close: ap(a.c) };
+  const band = (x) => ({ p: x.p, lo80: x.lo80, hi80: x.hi80, lo50: x.p, hi50: x.p });
+  const sub = (k, x) => act[k] != null ? `<span>실제 <b class="num ${sgn(act[k])}">${pct(act[k])}</b> ${hitTag(x, act[k])}</span>` : "";
+  let rows, meta = [`<span>어제 종가 <b class="num">${won(sp.pc)}원</b></span>`];
+  if (sp.intra) {
+    meta.unshift(`<span>${hhmmLabel(sp.intra.t)} 가격 <b class="num">${won(sp.intra.price)}원</b></span>`);
+    rows = [["close", "종가"], ["high", "고가"], ["low", "저가"]].map(([k, l]) => ({ label: l, v: band(sp.intra[k]), sub: sub(k, sp.intra[k]) }));
+  } else {
+    const sk = sp.pred.B ? "B" : Object.keys(sp.pred)[0], pr = sp.pred[sk];
+    if (sp.sig && sp.sig[sk] != null) meta.push(`<span>ADR ${SIG_NAME[sk]} <b class="num ${sgn(sp.sig[sk])}">${pct(sp.sig[sk])}</b></span>`);
+    if (sp.src && sp.src.morn) meta.unshift(`<span>ADR 사진 <b class="num">${sp.src.morn}</b></span>`);
+    rows = KEYS.map(([k, l]) => ({ label: l, v: band(pr[k]), sub: sub(k, pr[k]) }));
+  }
+  $("snap-meta").innerHTML = meta.join("");
+  $("snap-comment").textContent = sp.comment || "";
+  renderRanges(rows, "snap-ranges", "snap-ticks", sp.pc);
+}
+$("snap-btn").onclick = () => { $("c-snap").hidden = false; snapDay = null; snapIdx = null; renderSnap(); $("c-snap").scrollIntoView({ behavior: "smooth", block: "start" }); };
+$("snap-close").onclick = () => { $("c-snap").hidden = true; };
+
+/* ---------- 복기 안내 ---------- */
+function renderReview(last) {
+  const el = $("review");
+  const ask = `PC에서 Claude에게 <b>“그동안 복기해줘”</b>라고 말해주세요.`;
+  if (!last) { el.innerHTML = `일주일에 한 번, ${ask}`; el.classList.add("due"); return; }
+  const d = String(last), then = Date.UTC(+d.slice(0, 4), +d.slice(4, 6) - 1, +d.slice(6, 8));
+  const t = String(T.ymd), now = Date.UTC(+t.slice(0, 4), +t.slice(4, 6) - 1, +t.slice(6, 8));
+  const days = Math.round((now - then) / 86400000);
+  el.classList.toggle("due", days >= 7);
+  el.innerHTML = days >= 7
+    ? `마지막 복기 ${ymdLabel(last)} · ${days}일 지났어요. ${ask}`
+    : `마지막 복기 ${ymdLabel(last)} · 일주일에 한 번, ${ask}`;
+}
+
+/* ---------- boot ---------- */
+initForm();
+initPremium();
+(async () => {
+  try { sampleFn = await claude.use("sample"); } catch (e) { sampleFn = null; }
+  if (!sampleFn) { $("chat-off").hidden = false; $("composer").hidden = true; }
+  else {
+    try { const lim = await sampleFn.limits(); imgLimits = lim && lim.images ? lim.images : null; } catch (e) { imgLimits = null; }
+    if (!imgLimits) setStatus("이 화면에서는 사진 보내기가 안 될 수 있어요. [images 없음]", true);
+  }
+})();
+(async () => {
+  try { db = await claude.use("db"); } catch (e) { db = null; }
+  if (!db) { $("log-off").hidden = false; renderLog(); return; }
+  let got = { days: false, eve: false };
+  const refresh = () => { if (got.days && got.eve && !refresh.done) { refresh.done = true; initForm(); } else renderAll(); renderLog(); };
+  db.collection("days").orderBy("date", "desc").limit(90).onSnapshot((snap) => {
+    saved = {}; for (const d of snap.docs) { const v = d.data(); if (v && v.date) saved[v.date] = v; }
+    got.days = true; refresh();
+    if (!$("c-snap").hidden) renderSnap();
+  }, () => { $("log-off").hidden = false; });
+  db.doc("meta/review").onSnapshot((snap) => { renderReview(snap.exists ? (snap.data() || {}).last : null); }, () => {});
+  db.collection("evening").orderBy("ymd", "desc").limit(10).onSnapshot((snap) => {
+    evenings = {}; for (const d of snap.docs) { const v = d.data(); if (v && v.ymd) evenings[v.ymd] = v; }
+    got.eve = true; refresh();
+  }, () => {});
+})();
+</script>
+
+<script>
+(function () {
+  var el = document.getElementById("k-key");
+  if (!el) return;
+  try { if (window.hynixKey && window.hynixKey.get()) el.placeholder = "저장되어 있어요 (바꾸려면 새로 입력)"; } catch (e) {}
+  document.getElementById("k-save").onclick = function () {
+    var v = (el.value || "").trim();
+    var st = document.getElementById("k-status");
+    if (!v) { st.textContent = "키를 넣어주세요."; return; }
+    window.hynixKey.set(v);
+    el.value = "";
+    el.placeholder = "저장되어 있어요 (바꾸려면 새로 입력)";
+    st.textContent = "저장했어요. 이제 사진을 올릴 수 있어요.";
+  };
+})();
+</script>
+</body></html>
